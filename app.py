@@ -18,8 +18,8 @@ def format_number(num):
 
 app.jinja_env.filters['fmt_num'] = format_number
 
-# === 核心逻辑：智能搜索 ===
-def search_videos(api_key, query, order='viewCount', duration='24h', page_token=None):
+# === 核心逻辑：极简高效搜索 ===
+def search_videos(api_key, query, duration='24h', page_token=None):
     youtube = build('youtube', 'v3', developerKey=api_key)
     
     # 1. 计算时间窗口
@@ -31,20 +31,16 @@ def search_videos(api_key, query, order='viewCount', duration='24h', page_token=
         time_window = datetime.datetime.utcnow() - datetime.timedelta(hours=hours)
         published_after = time_window.isoformat("T") + "Z"
 
-    # 2. 策略调整 (关键修复)
-    # 如果有时间限制，强制使用 relevance (相关度)，否则 API 配合 viewCount 经常返回空或忽略时间
-    # 我们先抓取大量“相关”视频，然后在本地按热度排序
-    api_order = order
-    if duration != 'all':
-        api_order = 'relevance'
-    
+    # 2. 强制策略
+    # 为了保证能搜到结果且结果是“火”的，我们统一用 relevance 抓取，
+    # 这样能避开 YouTube API 的 bug，然后我们在本地按 VPH 排序。
     search_params = {
         'q': query,
         'part': 'id,snippet',
-        'maxResults': 50, # 抓取更多样本以供本地筛选
+        'maxResults': 50,  # 用户要求每页 50 条
         'type': 'video',
         'videoDuration': 'short',
-        'order': api_order,
+        'order': 'relevance', # 永远按相关度抓取，保证有结果
         'pageToken': page_token
     }
     if published_after:
@@ -53,9 +49,8 @@ def search_videos(api_key, query, order='viewCount', duration='24h', page_token=
     try:
         search_response = youtube.search().list(**search_params).execute()
     except HttpError as e:
-        # 容错：如果 API 不支持某种组合，降级重试
+        # 容错：如果报错，尝试去掉时间限制重试（保底策略）
         if e.resp.status == 400:
-             del search_params['order']
              del search_params['publishedAfter']
              search_response = youtube.search().list(**search_params).execute()
         else:
@@ -79,8 +74,6 @@ def search_videos(api_key, query, order='viewCount', duration='24h', page_token=
         snippet = item['snippet']
         
         view_count = int(stats.get('viewCount', 0))
-        # 移除严格的播放量过滤，防止新视频被误删
-        # 但过滤掉 0 播放的无效数据
         if view_count <= 0: continue
 
         pub_time = isodate.parse_datetime(snippet['publishedAt'])
@@ -90,7 +83,6 @@ def search_videos(api_key, query, order='viewCount', duration='24h', page_token=
         # VPH 计算
         vph = int(view_count / hours_ago)
 
-        # 时间显示优化
         if hours_ago < 24:
             ago_str = f"{int(hours_ago)}h ago"
         else:
@@ -108,16 +100,13 @@ def search_videos(api_key, query, order='viewCount', duration='24h', page_token=
             'published': pub_time
         })
     
-    # 4. 本地智能排序
-    # 如果用户选了 viewCount，我们在本地按 VPH (真实热度) 重新排
-    if order == 'viewCount':
-        videos.sort(key=lambda x: x['vph'], reverse=True)
-    elif order == 'date':
-        videos.sort(key=lambda x: x['published'], reverse=True)
+    # 4. 强制按增长速度 (VPH) 排序
+    # 不管 API 怎么返回，我们永远把最火的顶到最前面
+    videos.sort(key=lambda x: x['vph'], reverse=True)
     
-    return videos[:18], next_page_token # 只返回前18个最优质的
+    return videos, next_page_token
 
-# === 核心逻辑：频道分析 (补全) ===
+# === 频道分析逻辑 (保持不变) ===
 def get_channel_stats(api_key, channel_id):
     youtube = build('youtube', 'v3', developerKey=api_key)
     try:
@@ -125,9 +114,8 @@ def get_channel_stats(api_key, channel_id):
         if not chan_resp['items']: return None
         channel = chan_resp['items'][0]
         
-        # 获取最新 Shorts
         search_resp = youtube.search().list(
-            channelId=channel_id, part='id', order='date', type='video', videoDuration='short', maxResults=10
+            channelId=channel_id, part='id', order='date', type='video', videoDuration='short', maxResults=12
         ).execute()
         
         video_ids = [i['id']['videoId'] for i in search_resp.get('items', [])]
@@ -140,7 +128,6 @@ def get_channel_stats(api_key, channel_id):
                 now = datetime.datetime.now(datetime.timezone.utc)
                 hours = max(0.1, (now - pub).total_seconds()/3600)
                 views = int(item['statistics'].get('viewCount', 0))
-                
                 latest_shorts.append({
                     'id': item['id'],
                     'title': item['snippet']['title'],
@@ -168,12 +155,10 @@ def index():
     if request.method == 'POST' and request.form.get('new_api_key'):
         api_key = request.form.get('new_api_key').strip()
         session['api_key'] = api_key
-        return redirect(url_for('index')) # 刷新页面清除 POST 数据
+        return redirect(url_for('index'))
 
-    # 统一使用 GET 参数，方便分享链接
     query = request.args.get('query', '')
-    order = request.args.get('order', 'viewCount')
-    duration = request.args.get('duration', '24h')
+    duration = request.args.get('duration', '24h') # 只保留这一个筛选参数
     page_token = request.args.get('page_token', None)
 
     videos = []
@@ -182,9 +167,9 @@ def index():
 
     if api_key and query:
         try:
-            videos, next_token = search_videos(api_key, query, order, duration, page_token)
+            videos, next_token = search_videos(api_key, query, duration, page_token)
             if not videos:
-                error = "未找到视频，建议切换排序方式或放宽时间限制。"
+                error = "未找到视频，请尝试放宽时间限制。"
         except Exception as e:
             error = f"API Error: {str(e)}"
 
@@ -192,7 +177,6 @@ def index():
                          videos=videos, 
                          query=query, 
                          api_key=api_key, 
-                         order=order, 
                          duration=duration, 
                          next_token=next_token, 
                          error=error)
@@ -202,7 +186,7 @@ def channel_analysis(channel_id):
     api_key = session.get('api_key')
     if not api_key: return redirect(url_for('index'))
     data = get_channel_stats(api_key, channel_id)
-    if not data: return "Channel not found or API error"
+    if not data: return "Channel not found"
     return render_template('channel.html', c=data)
 
 if __name__ == '__main__':
