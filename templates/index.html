@@ -4,14 +4,14 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>ViralMonkey Pro</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
-                    colors: { "bg-main": "#000", "primary": "#ccff00", "bg-card": "#111" },
+                    colors: { "bg-main": "#000", "primary": "#ccff00", "bg-card": "#111", "border-color": "#222" },
                     fontFamily: { "sans": ["Plus Jakarta Sans", "sans-serif"] },
                 }
             }
@@ -27,64 +27,86 @@
 </head>
 <body class="bg-bg-main text-white font-sans min-h-screen flex flex-col">
 
-    <header class="h-16 border-b border-gray-900 bg-black/80 backdrop-blur fixed w-full top-0 z-50 flex items-center justify-between px-6">
-        <div class="flex items-center gap-2 font-bold text-xl tracking-tight">
+    <header class="h-16 border-b border-border-color bg-black/80 backdrop-blur fixed w-full top-0 z-50 flex items-center justify-between px-4 md:px-6">
+        <a href="/" class="flex items-center gap-2 font-bold text-xl tracking-tight">
             <span class="text-primary material-symbols-rounded">smart_toy</span> ViralMonkey
-        </div>
+        </a>
         <div class="flex items-center gap-4">
             {% if api_key %}
-            <span class="text-xs text-gray-500 font-mono hidden sm:block">KEY: ••••{{ api_key[-4:] }}</span>
+            <div class="hidden sm:flex items-center gap-2 text-xs font-mono text-gray-500 bg-[#111] px-3 py-1 rounded border border-gray-800">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                KEY: ••••{{ api_key[-4:] }}
+            </div>
             {% endif %}
-            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="bg-gray-800 hover:bg-gray-700 text-xs px-3 py-1.5 rounded-lg transition">API 设置</button>
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="text-sm font-bold hover:text-primary transition">API 设置</button>
         </div>
     </header>
 
-    <div class="mt-24 px-6 max-w-[1600px] mx-auto w-full">
-        <form action="/" method="GET" class="flex flex-col md:flex-row gap-4 mb-8">
-            <div class="flex-1 relative">
-                <span class="absolute left-4 top-3.5 text-gray-500 material-symbols-rounded">search</span>
-                <input name="query" value="{{ query }}" placeholder="输入关键词 (例如: Minecraft, ASMR)..." class="w-full bg-[#111] border border-gray-800 rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition">
+    <div class="mt-20 px-4 md:px-6 max-w-[1600px] mx-auto w-full pb-20">
+        
+        <form action="/" method="GET" class="flex flex-col md:flex-row gap-3 mb-8 sticky top-20 z-40 py-2 bg-bg-main/95 backdrop-blur">
+            <div class="flex-1 relative group">
+                <span class="absolute left-4 top-3.5 text-gray-500 material-symbols-rounded group-focus-within:text-primary transition">search</span>
+                <input name="query" value="{{ query }}" placeholder="输入关键词 (例如: Kpop, Minecraft)..." class="w-full bg-[#111] border border-border-color rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition shadow-lg">
             </div>
             
-            <div class="flex gap-2">
-                <select name="order" class="bg-[#111] border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer">
-                    <option value="viewCount" {% if order == 'viewCount' %}selected{% endif %}>按播放量 (Views)</option>
-                    <option value="date" {% if order == 'date' %}selected{% endif %}>按最新 (Latest)</option>
-                    <option value="relevance" {% if order == 'relevance' %}selected{% endif %}>按相关度</option>
+            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0">
+                <select name="order" class="bg-[#111] border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[120px]">
+                    <option value="viewCount" {% if order == 'viewCount' %}selected{% endif %}>🔥 最多播放</option>
+                    <option value="relevance" {% if order == 'relevance' %}selected{% endif %}>🎯 最相关</option>
+                    <option value="date" {% if order == 'date' %}selected{% endif %}>🕒 最新发布</option>
                 </select>
-                <select name="duration" class="bg-[#111] border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer">
-                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>过去 24h</option>
-                    <option value="7d" {% if duration == '7d' %}selected{% endif %}>过去 7天</option>
-                    <option value="30d" {% if duration == '30d' %}selected{% endif %}>过去 30天</option>
+                <select name="duration" class="bg-[#111] border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[100px]">
+                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>24 小时</option>
+                    <option value="72h" {% if duration == '72h' %}selected{% endif %}>3 天</option>
+                    <option value="7d" {% if duration == '7d' %}selected{% endif %}>7 天</option>
+                    <option value="all" {% if duration == 'all' %}selected{% endif %}>不限时间</option>
                 </select>
-                <button type="submit" class="bg-primary hover:bg-[#b3e600] text-black font-bold px-6 rounded-xl transition shadow-[0_0_15px_rgba(204,255,0,0.2)]">
+                <button type="submit" class="bg-primary hover:bg-[#b3e600] text-black font-bold px-6 rounded-xl transition shadow-[0_0_15px_rgba(204,255,0,0.2)] whitespace-nowrap">
                     挖掘
                 </button>
             </div>
         </form>
 
+        {% if error %}
+        <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-8 text-center flex flex-col items-center gap-2">
+            <span class="material-symbols-rounded text-3xl">error_outline</span>
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+
         {% if videos %}
+        <div class="flex items-center gap-2 mb-6 text-sm text-gray-500">
+            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full">找到 50+ 个结果</span>
+            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full text-primary">已按 VPH 热度优化排序</span>
+        </div>
+
         <div class="masonry-grid">
             {% for v in videos %}
-            <div class="break-inside-avoid mb-6 bg-bg-card rounded-xl overflow-hidden border border-gray-900 group hover:border-primary/50 transition">
+            <div class="break-inside-avoid mb-6 bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
                 <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" class="block relative aspect-[9/16] bg-gray-900">
-                    <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-500">
-                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow">
+                    <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-700">
+                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow z-10">
                         {{ v.vph }}/hr
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/20 backdrop-blur-[1px]">
+                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                            <span class="material-symbols-rounded text-3xl text-black ml-1">play_arrow</span>
+                        </div>
                     </div>
                 </a>
                 
                 <div class="p-4">
-                    <div class="text-xs text-gray-500 mb-1 flex justify-between">
+                    <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
                         <span>{{ v.ago }}</span>
-                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">visibility</span> {{ v.views|fmt_num }}</span>
+                        <span class="text-white flex items-center gap-1"><span class="material-symbols-rounded text-sm">visibility</span> {{ v.views|fmt_num }}</span>
                     </div>
-                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary">{{ v.title }}</h3>
+                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="window.location.href='/analyze/{{ v.id }}'">{{ v.title }}</h3>
                     
-                    <a href="/channel={{ v.channel_id }}" class="flex items-center gap-2 pt-3 border-t border-gray-800 hover:bg-gray-800/50 -mx-4 px-4 py-2 transition mt-auto">
-                        <div class="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold">{{ v.channel[0] }}</div>
-                        <span class="text-xs font-medium text-gray-400 truncate">{{ v.channel }}</span>
-                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm">arrow_forward</span>
+                    <a href="/channel/{{ v.channel_id }}" class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
+                        <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-white font-bold ring-1 ring-gray-700">{{ v.channel[0] }}</div>
+                        <span class="text-xs font-medium text-gray-400 truncate group-hover/channel:text-white transition">{{ v.channel }}</span>
+                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">arrow_forward</span>
                     </a>
                 </div>
             </div>
@@ -93,29 +115,37 @@
 
         {% if next_token %}
         <div class="flex justify-center py-12">
-            <a href="/?query={{ query }}&order={{ order }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-gray-800 hover:bg-primary hover:text-black text-white px-8 py-3 rounded-full font-bold transition flex items-center gap-2">
-                加载更多 Shorts <span class="material-symbols-rounded">expand_more</span>
+            <a href="/?query={{ query }}&order={{ order }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-[#111] hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
+                加载下一页 <span class="material-symbols-rounded">expand_more</span>
             </a>
         </div>
         {% endif %}
 
-        {% elif query %}
-        <div class="text-center py-32 text-gray-600">
-            <span class="material-symbols-rounded text-6xl opacity-30">search_off</span>
-            <p class="mt-4">没有找到相关视频</p>
+        {% elif query and not error %}
+        <div class="flex flex-col items-center justify-center py-32 text-gray-600">
+            <span class="material-symbols-rounded text-6xl opacity-30 mb-4">search_off</span>
+            <p class="text-lg">未找到 "{{ query }}" 相关的视频</p>
+            <p class="text-sm mt-2 opacity-50">尝试把时间改为 "7天" 或 "不限时间"</p>
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center h-[60vh] text-center">
+            <div class="w-20 h-20 bg-[#111] rounded-full flex items-center justify-center mb-6 border border-border-color shadow-[0_0_30px_rgba(204,255,0,0.1)]">
+                <span class="material-symbols-rounded text-4xl text-primary">rocket_launch</span>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">准备好挖掘爆款了吗？</h1>
+            <p class="text-gray-500 mb-8">输入关键词，开始探索 YouTube Shorts 的流量密码</p>
         </div>
         {% endif %}
     </div>
 
     <div id="keyModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-[#111] border border-gray-800 p-8 rounded-2xl w-full max-w-md">
-            <h3 class="text-xl font-bold mb-4">配置 API Key</h3>
+        <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+            <button onclick="document.getElementById('keyModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-rounded">close</span></button>
+            <h3 class="text-xl font-bold mb-1 text-white">配置 API Key</h3>
+            <p class="text-xs text-gray-500 mb-6">您的 Key 仅存储在本地 Session 中，安全无忧。</p>
             <form action="/" method="POST">
-                <input name="new_api_key" type="password" placeholder="AIzaSy..." class="w-full bg-black border border-gray-800 rounded-lg px-4 py-3 text-white mb-4 focus:border-primary outline-none">
-                <div class="flex gap-4">
-                    <button type="button" onclick="document.getElementById('keyModal').classList.add('hidden')" class="flex-1 py-3 rounded-lg text-gray-400 hover:bg-gray-900">取消</button>
-                    <button type="submit" class="flex-1 bg-primary text-black font-bold py-3 rounded-lg">保存</button>
-                </div>
+                <input name="new_api_key" type="password" placeholder="粘贴 AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition">
+                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">保存配置</button>
             </form>
         </div>
     </div>
