@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>分析报告 - {{ v.title }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: { "primary": "#0d59f2", "bg-dark": "#101623", "card-dark": "#1c2536" },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-bg-dark text-slate-50 font-display min-h-screen flex flex-col">
+
+    <header class="h-16 border-b border-slate-800 flex items-center px-8 bg-[#101623]">
+        <a href="/" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            返回工作台
+        </a>
+    </header>
+
+    <main class="flex-1 max-w-[1440px] mx-auto p-8 w-full">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-white mb-3">{{ v.title }}</h1>
+            <div class="flex items-center gap-6 text-sm text-slate-400">
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">person</span> {{ v.channel }}</span>
+                <span class="flex items-center gap-1"><span class="material-symbols-outlined text-base">calendar_today</span> {{ v.published[:10] }}</span>
+                <a href="https://www.youtube.com/watch?v={{ v.id }}" target="_blank" class="text-primary hover:underline flex items-center gap-1">
+                    <span class="material-symbols-outlined text-base">open_in_new</span> YouTube打开
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                <div class="relative w-full aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 group">
+                    <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-80">
+                    <a href="https://www.youtube.com/watch?v={{ v.id }}" target="_blank" class="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
+                        <span class="material-symbols-outlined text-6xl text-white opacity-80 group-hover:scale-110 transition-transform">play_circle</span>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-card-dark p-5 rounded-xl border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold uppercase mb-1">Total Views</div>
+                        <div class="text-2xl font-bold text-white">{{ "{:,}".format(v.views) }}</div>
+                    </div>
+                    <div class="bg-card-dark p-5 rounded-xl border border-slate-800">
+                        <div class="text-slate-400 text-xs font-bold uppercase mb-1">Likes</div>
+                        <div class="text-2xl font-bold text-white">{{ "{:,}".format(v.likes) }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <div class="bg-gradient-to-br from-primary/20 to-card-dark border border-primary/30 p-8 rounded-2xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10">
+                        <span class="material-symbols-outlined text-9xl text-white">auto_awesome</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-yellow-400">tips_and_updates</span>
+                        AI 爆款原因推测
+                    </h3>
+                    <p class="text-slate-300 leading-relaxed text-lg">
+                        该视频通过 <b>{{ v.title[:15] }}...</b> 这种强烈的标题钩子，成功吸引了点击。
+                        结合其高互动率（点赞数 {{ v.likes }}），推测其前 3 秒的视觉节奏非常紧凑。
+                        建议模仿其 <span class="bg-primary/30 text-white px-2 rounded font-bold">封面构图</span> 和 <span class="bg-primary/30 text-white px-2 rounded font-bold">前5秒叙事节奏</span>。
+                    </p>
+                </div>
+
+                <div class="bg-card-dark rounded-2xl border border-slate-800 p-8">
+                    <h4 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-4">核心流量标签 (Tags)</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for tag in v.tags %}
+                        <span class="px-4 py-2 rounded-lg bg-slate-800 text-blue-400 text-sm font-medium hover:bg-slate-700 cursor-pointer transition-colors">#{{ tag }}</span>
+                        {% else %}
+                        <span class="text-slate-500 italic">该视频未设置公开标签</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-card-dark rounded-2xl border border-slate-800 p-8">
+                    <h4 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-4">脚本结构模拟</h4>
+                    <div class="space-y-4">
+                        <div class="flex gap-4">
+                            <div class="w-16 text-slate-500 font-mono text-sm">00:00</div>
+                            <div class="flex-1">
+                                <span class="text-yellow-500 font-bold text-sm">[Hook]</span>
+                                <p class="text-slate-300 text-sm mt-1">强烈的视觉冲击或提问，引出主题 "{{ v.title }}"。</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-16 text-slate-500 font-mono text-sm">00:15</div>
+                            <div class="flex-1">
+                                <span class="text-blue-500 font-bold text-sm">[Value]</span>
+                                <p class="text-slate-300 text-sm mt-1">快速展示核心内容，每 2 秒切换一次镜头。</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-16 text-slate-500 font-mono text-sm">00:45</div>
+                            <div class="flex-1">
+                                <span class="text-green-500 font-bold text-sm">[CTA]</span>
+                                <p class="text-slate-300 text-sm mt-1">引导用户查看描述栏或订阅频道。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
