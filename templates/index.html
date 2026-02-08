@@ -3,241 +3,120 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ViralMonkey - 免费版 ShortsMonkey</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet" />
+    <title>ViralMonkey Pro</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
-                    colors: {
-                        "bg-main": "#050505",       /* 极黑背景 */
-                        "bg-card": "#121212",       /* 卡片背景 */
-                        "bg-sidebar": "#0a0a0a",    /* 侧边栏 */
-                        "primary": "#ccff00",       /* 标志性的霓虹绿/黄 */
-                        "primary-hover": "#b3e600",
-                        "text-main": "#ffffff",
-                        "text-muted": "#888888",
-                        "border-color": "#222222"
-                    },
+                    colors: { "bg-main": "#000", "primary": "#ccff00", "bg-card": "#111" },
                     fontFamily: { "sans": ["Plus Jakarta Sans", "sans-serif"] },
-                },
-            },
+                }
+            }
         }
     </script>
     <style>
-        /* 隐藏滚动条但保留功能 */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-        
-        .masonry-grid { column-count: 2; column-gap: 1.5rem; }
+        .masonry-grid { column-count: 2; column-gap: 1rem; }
         @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
-        @media (min-width: 1280px) { .masonry-grid { column-count: 4; } }
-        @media (min-width: 1600px) { .masonry-grid { column-count: 5; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
+        @media (min-width: 1440px) { .masonry-grid { column-count: 5; } }
         .break-inside-avoid { break-inside: avoid; }
     </style>
 </head>
-<body class="bg-bg-main text-text-main font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-black">
+<body class="bg-bg-main text-white font-sans min-h-screen flex flex-col">
 
-    <aside class="w-64 bg-bg-sidebar border-r border-border-color flex-col hidden md:flex z-50">
-        <div class="h-16 flex items-center px-6 border-b border-border-color">
-            <span class="material-symbols-rounded text-primary text-3xl mr-2">smart_toy</span>
-            <span class="text-xl font-bold tracking-tight">Viral<span class="text-primary">Monkey</span></span>
+    <header class="h-16 border-b border-gray-900 bg-black/80 backdrop-blur fixed w-full top-0 z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-2 font-bold text-xl tracking-tight">
+            <span class="text-primary material-symbols-rounded">smart_toy</span> ViralMonkey
         </div>
-
-        <nav class="flex-1 px-4 py-6 space-y-1">
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold">
-                <span class="material-symbols-rounded">manage_search</span>
-                视频挖掘
-            </a>
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-white transition-all group">
-                <span class="material-symbols-rounded group-hover:text-white transition-colors">favorite</span>
-                收藏夹 (开发中)
-            </a>
-            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-muted hover:bg-white/5 hover:text-white transition-all group">
-                <span class="material-symbols-rounded group-hover:text-white transition-colors">trending_up</span>
-                趋势分析
-            </a>
-        </nav>
-
-        <div class="p-4 border-t border-border-color">
-            <div class="bg-card-bg rounded-xl p-4 border border-border-color">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-text-muted font-bold uppercase">API Status</span>
-                    <span class="w-2 h-2 rounded-full {% if api_key %}bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]{% else %}bg-red-500 animate-pulse{% endif %}"></span>
-                </div>
-                {% if api_key %}
-                <div class="text-xs text-white font-mono truncate mb-2">{{ api_key[:6] }}......</div>
-                <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')" class="w-full text-xs bg-white/5 hover:bg-white/10 text-white py-1.5 rounded transition-colors">更换 Key</button>
-                {% else %}
-                <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')" class="w-full text-xs bg-primary text-black font-bold py-1.5 rounded hover:bg-primary-hover">配置 Key</button>
-                {% endif %}
-            </div>
-        </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col h-screen relative">
-        
-        <header class="h-16 border-b border-border-color bg-bg-main/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-40">
-            <button class="md:hidden text-text-muted hover:text-white mr-4">
-                <span class="material-symbols-rounded">menu</span>
-            </button>
-
-            <form action="/" method="POST" class="flex-1 max-w-4xl flex items-center gap-3">
-                <div class="relative flex-1 group">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-text-muted group-focus-within:text-primary transition-colors">search</span>
-                    </div>
-                    <input name="query" value="{{ query }}" class="block w-full pl-10 pr-3 py-2.5 bg-bg-card border border-border-color rounded-lg text-sm text-white placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="输入关键词 (例如: Minecraft, Skibidi, AI Story)..." type="text" autocomplete="off"/>
-                </div>
-
-                <div class="relative">
-                    <select name="time_filter" onchange="this.form.submit()" class="appearance-none bg-bg-card border border-border-color text-white text-sm rounded-lg pl-4 pr-10 py-2.5 focus:outline-none focus:border-primary cursor-pointer hover:bg-white/5 transition-colors font-medium">
-                        <option value="24h" {% if time_option == '24h' %}selected{% endif %}>过去 24 小时</option>
-                        <option value="72h" {% if time_option == '72h' %}selected{% endif %}>过去 3 天</option>
-                        <option value="7d" {% if time_option == '7d' %}selected{% endif %}>过去 7 天</option>
-                        <option value="30d" {% if time_option == '30d' %}selected{% endif %}>过去 30 天</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-text-muted">
-                        <span class="material-symbols-rounded text-sm">expand_more</span>
-                    </div>
-                </div>
-
-                <button type="submit" class="bg-primary hover:bg-primary-hover text-black font-bold py-2.5 px-6 rounded-lg transition-transform active:scale-95 flex items-center gap-1 shadow-[0_0_15px_rgba(204,255,0,0.1)]">
-                    <span class="material-symbols-rounded text-xl">bolt</span>
-                    <span class="hidden lg:inline">开始挖掘</span>
-                </button>
-            </form>
-        </header>
-
-        <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
-            
-            {% if error %}
-            <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-between">
-                <span class="flex items-center gap-2"><span class="material-symbols-rounded">error</span> {{ error }}</span>
-                <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')" class="text-sm underline hover:text-white">检查 API Key</button>
-            </div>
+        <div class="flex items-center gap-4">
+            {% if api_key %}
+            <span class="text-xs text-gray-500 font-mono hidden sm:block">KEY: ••••{{ api_key[-4:] }}</span>
             {% endif %}
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="bg-gray-800 hover:bg-gray-700 text-xs px-3 py-1.5 rounded-lg transition">API 设置</button>
+        </div>
+    </header>
 
-            {% if videos %}
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                    <span class="material-symbols-rounded text-primary">local_fire_department</span>
-                    搜索结果
-                </h2>
-                <div class="text-sm text-text-muted bg-bg-card px-3 py-1 rounded-full border border-border-color">
-                    找到 {{ videos|length }} 个视频
-                </div>
+    <div class="mt-24 px-6 max-w-[1600px] mx-auto w-full">
+        <form action="/" method="GET" class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="flex-1 relative">
+                <span class="absolute left-4 top-3.5 text-gray-500 material-symbols-rounded">search</span>
+                <input name="query" value="{{ query }}" placeholder="输入关键词 (例如: Minecraft, ASMR)..." class="w-full bg-[#111] border border-gray-800 rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition">
             </div>
+            
+            <div class="flex gap-2">
+                <select name="order" class="bg-[#111] border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer">
+                    <option value="viewCount" {% if order == 'viewCount' %}selected{% endif %}>按播放量 (Views)</option>
+                    <option value="date" {% if order == 'date' %}selected{% endif %}>按最新 (Latest)</option>
+                    <option value="relevance" {% if order == 'relevance' %}selected{% endif %}>按相关度</option>
+                </select>
+                <select name="duration" class="bg-[#111] border border-gray-800 rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer">
+                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>过去 24h</option>
+                    <option value="7d" {% if duration == '7d' %}selected{% endif %}>过去 7天</option>
+                    <option value="30d" {% if duration == '30d' %}selected{% endif %}>过去 30天</option>
+                </select>
+                <button type="submit" class="bg-primary hover:bg-[#b3e600] text-black font-bold px-6 rounded-xl transition shadow-[0_0_15px_rgba(204,255,0,0.2)]">
+                    挖掘
+                </button>
+            </div>
+        </form>
 
-            <div class="masonry-grid pb-20">
-                {% for video in videos %}
-                <div class="break-inside-avoid mb-6 group relative bg-bg-card rounded-xl overflow-hidden border border-border-color hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:-translate-y-1">
+        {% if videos %}
+        <div class="masonry-grid">
+            {% for v in videos %}
+            <div class="break-inside-avoid mb-6 bg-bg-card rounded-xl overflow-hidden border border-gray-900 group hover:border-primary/50 transition">
+                <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" class="block relative aspect-[9/16] bg-gray-900">
+                    <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-500">
+                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow">
+                        {{ v.vph }}/hr
+                    </div>
+                </a>
+                
+                <div class="p-4">
+                    <div class="text-xs text-gray-500 mb-1 flex justify-between">
+                        <span>{{ v.ago }}</span>
+                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">visibility</span> {{ v.views|fmt_num }}</span>
+                    </div>
+                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary">{{ v.title }}</h3>
                     
-                    <a href="https://www.youtube.com/watch?v={{ video.id }}" target="_blank" class="block relative aspect-[9/16] overflow-hidden bg-black cursor-pointer">
-                        <img src="{{ video.thumb }}" class="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"/>
-                        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80"></div>
-                        
-                        <div class="absolute top-3 right-3 bg-primary text-black text-xs font-extrabold px-2 py-1 rounded shadow-lg flex items-center gap-1 z-10">
-                            <span class="material-symbols-rounded text-sm">trending_up</span> {{ video.vph }}/hr
-                        </div>
-
-                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-[2px]">
-                            <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(204,255,0,0.4)]">
-                                <span class="material-symbols-rounded text-3xl text-black ml-1">play_arrow</span>
-                            </div>
-                        </div>
-
-                        <div class="absolute bottom-3 left-3 right-3 text-white">
-                            <div class="text-2xl font-bold leading-none mb-1">{{ "{:,}".format(video.views) }}</div>
-                            <div class="text-xs text-text-muted flex items-center gap-1 font-medium">
-                                <span class="material-symbols-rounded text-xs">visibility</span> 总播放量
-                            </div>
-                        </div>
+                    <a href="/channel={{ v.channel_id }}" class="flex items-center gap-2 pt-3 border-t border-gray-800 hover:bg-gray-800/50 -mx-4 px-4 py-2 transition mt-auto">
+                        <div class="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold">{{ v.channel[0] }}</div>
+                        <span class="text-xs font-medium text-gray-400 truncate">{{ v.channel }}</span>
+                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm">arrow_forward</span>
                     </a>
-
-                    <div class="p-4">
-                        <h3 class="font-semibold text-white text-sm leading-snug mb-3 line-clamp-2 hover:text-primary transition-colors cursor-pointer" onclick="window.location.href='/analyze/{{ video.id }}'">
-                            {{ video.title }}
-                        </h3>
-                        
-                        <div class="flex items-center justify-between border-t border-border-color pt-3">
-                             <div class="flex items-center gap-2 overflow-hidden">
-                                <span class="w-6 h-6 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-                                    {{ video.channel[0] }}
-                                </span>
-                                <div class="text-xs text-text-muted truncate font-medium hover:text-white cursor-pointer">{{ video.channel }}</div>
-                             </div>
-                             
-                             <div class="text-[10px] font-bold text-text-muted flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
-                                <span class="material-symbols-rounded text-xs">schedule</span>
-                                {{ video.hours_ago }}h
-                             </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            {% elif query %}
-            <div class="h-[60vh] flex flex-col items-center justify-center text-text-muted">
-                <div class="w-20 h-20 bg-bg-card rounded-full flex items-center justify-center mb-4 border border-border-color">
-                    <span class="material-symbols-rounded text-4xl opacity-50">search_off</span>
-                </div>
-                <p>未找到结果，换个关键词试试？</p>
-            </div>
-            {% else %}
-            <div class="h-[70vh] flex flex-col items-center justify-center relative overflow-hidden">
-                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
-                
-                <span class="material-symbols-rounded text-8xl text-bg-card mb-6">rocket_launch</span>
-                <h1 class="text-4xl font-bold text-white mb-3 tracking-tight">发现下一个<span class="text-primary">爆款视频</span></h1>
-                <p class="text-text-muted text-lg max-w-lg text-center mb-8">输入任何利基市场关键词，我们的 AI 将为您挖掘 YouTube 上正在病毒式传播的 Shorts。</p>
-                
-                <div class="flex gap-3">
-                    <span class="px-3 py-1 rounded-full border border-border-color text-xs text-text-muted">热门: Minecraft</span>
-                    <span class="px-3 py-1 rounded-full border border-border-color text-xs text-text-muted">热门: AI Story</span>
-                    <span class="px-3 py-1 rounded-full border border-border-color text-xs text-text-muted">热门: Skibidi</span>
                 </div>
             </div>
-            {% endif %}
+            {% endfor %}
         </div>
-    </main>
 
-    <div id="apiKeyModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity">
-        <div class="bg-bg-card border border-border-color p-8 rounded-2xl w-full max-w-md shadow-2xl relative transform transition-all scale-100">
-            <button onclick="document.getElementById('apiKeyModal').classList.add('hidden')" class="absolute top-4 right-4 text-text-muted hover:text-white transition-colors">
-                <span class="material-symbols-rounded text-2xl">close</span>
-            </button>
-            
-            <div class="text-center mb-6">
-                <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
-                    <span class="material-symbols-rounded text-2xl">key</span>
-                </div>
-                <h3 class="text-xl font-bold text-white">配置 API 密钥</h3>
-                <p class="text-sm text-text-muted mt-2">
-                    ViralMonkey 使用您自己的 YouTube Data API Key。<br>数据直连 Google，既免费又安全。
-                </p>
-            </div>
+        {% if next_token %}
+        <div class="flex justify-center py-12">
+            <a href="/?query={{ query }}&order={{ order }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-gray-800 hover:bg-primary hover:text-black text-white px-8 py-3 rounded-full font-bold transition flex items-center gap-2">
+                加载更多 Shorts <span class="material-symbols-rounded">expand_more</span>
+            </a>
+        </div>
+        {% endif %}
 
+        {% elif query %}
+        <div class="text-center py-32 text-gray-600">
+            <span class="material-symbols-rounded text-6xl opacity-30">search_off</span>
+            <p class="mt-4">没有找到相关视频</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div id="keyModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-[#111] border border-gray-800 p-8 rounded-2xl w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">配置 API Key</h3>
             <form action="/" method="POST">
-                <div class="mb-5">
-                    <label class="block text-xs font-bold text-text-muted uppercase mb-2 ml-1">API Key</label>
-                    <input name="new_api_key" type="password" placeholder="粘贴你的 AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3.5 text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none text-sm transition-all" required>
+                <input name="new_api_key" type="password" placeholder="AIzaSy..." class="w-full bg-black border border-gray-800 rounded-lg px-4 py-3 text-white mb-4 focus:border-primary outline-none">
+                <div class="flex gap-4">
+                    <button type="button" onclick="document.getElementById('keyModal').classList.add('hidden')" class="flex-1 py-3 rounded-lg text-gray-400 hover:bg-gray-900">取消</button>
+                    <button type="submit" class="flex-1 bg-primary text-black font-bold py-3 rounded-lg">保存</button>
                 </div>
-                
-                <button type="submit" class="w-full bg-primary hover:bg-primary-hover text-black font-bold py-3.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-primary/20">
-                    保存并连接
-                </button>
             </form>
-            
-            <div class="mt-6 text-center">
-                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-xs text-text-muted hover:text-primary underline">没有 Key? 去 Google Cloud 申请 -></a>
-            </div>
         </div>
     </div>
 

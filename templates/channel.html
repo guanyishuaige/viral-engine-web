@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>频道分析 - {{ c.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: { colors: { "bg-main": "#000", "primary": "#ccff00" } }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bg-main text-white min-h-screen p-6">
+    <a href="/" class="inline-flex items-center gap-2 text-gray-500 hover:text-white mb-8 transition">
+        <span class="material-symbols-rounded">arrow_back</span> 返回搜索
+    </a>
+
+    <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center gap-8 mb-12 bg-[#111] p-8 rounded-2xl border border-gray-800">
+            <img src="{{ c.thumb }}" class="w-24 h-24 rounded-full ring-4 ring-primary/20">
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-bold mb-2">{{ c.title }}</h1>
+                <div class="flex gap-6 text-sm text-gray-400">
+                    <div><span class="block text-xl font-bold text-white">{{ c.subs|fmt_num }}</span> 订阅者</div>
+                    <div><span class="block text-xl font-bold text-white">{{ c.total_views|fmt_num }}</span> 总播放</div>
+                    <div><span class="block text-xl font-bold text-white">{{ c.video_count }}</span> 个视频</div>
+                </div>
+            </div>
+            <div class="ml-auto">
+                <a href="https://youtube.com/channel/{{ c.id }}" target="_blank" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-bold transition">
+                    打开 YouTube
+                </a>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <span class="material-symbols-rounded text-primary">analytics</span> 最新视频表现
+        </h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% for v in c.latest_shorts %}
+            <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" class="group relative aspect-[9/16] bg-gray-900 rounded-xl overflow-hidden border border-gray-800 hover:border-primary">
+                <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition">
+                <div class="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/90 to-transparent">
+                    <div class="text-xs font-bold text-white mb-1 line-clamp-1">{{ v.title }}</div>
+                    <div class="flex justify-between text-[10px] text-gray-300">
+                        <span>{{ v.views|fmt_num }} views</span>
+                        <span class="text-primary">{{ v.vph }}/hr</span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
