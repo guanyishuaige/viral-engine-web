@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ViralMonkey Pro</title>
+    <title>ViralMonkey Pro - 多核版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
     <script>
@@ -32,13 +32,15 @@
             <span class="text-primary material-symbols-rounded">smart_toy</span> ViralMonkey
         </a>
         <div class="flex items-center gap-4">
-            {% if api_key %}
+            {% if api_keys %}
             <div class="hidden sm:flex items-center gap-2 text-xs font-mono text-gray-500 bg-[#111] px-3 py-1 rounded border border-gray-800">
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                KEY: ••••{{ api_key[-4:] }}
+                KEYS: {{ api_keys|length }} 个可用
             </div>
             {% endif %}
-            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="text-sm font-bold hover:text-primary transition">API 设置</button>
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="text-sm font-bold hover:text-primary transition bg-gray-800 px-3 py-1.5 rounded-lg">
+                {% if api_keys %}管理 Keys{% else %}配置 Keys{% endif %}
+            </button>
         </div>
     </header>
 
@@ -68,6 +70,9 @@
         <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-8 text-center flex flex-col items-center gap-2">
             <span class="material-symbols-rounded text-3xl">error_outline</span>
             <p>{{ error }}</p>
+            {% if "Key" in error %}
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm">点击此处添加更多 API Key</button>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -75,7 +80,7 @@
         <div class="flex items-center gap-2 mb-6 text-sm text-gray-500">
             <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full">每页 50 条</span>
             <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full text-primary flex items-center gap-1">
-                <span class="material-symbols-rounded text-xs">trending_up</span> 已自动按增长速度排序
+                <span class="material-symbols-rounded text-xs">trending_up</span> 按增长速度排序
             </span>
         </div>
 
@@ -97,14 +102,18 @@
                 <div class="p-4">
                     <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
                         <span>{{ v.ago }}</span>
-                        <span class="text-white flex items-center gap-1"><span class="material-symbols-rounded text-sm">visibility</span> {{ v.views|fmt_num }}</span>
+                        <span class="text-white flex items-center gap-1">
+                            <span class="material-symbols-rounded text-sm">visibility</span> 
+                            {{ v.views|fmt_num }} </span>
                     </div>
-                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="window.location.href='/analyze/{{ v.id }}'">{{ v.title }}</h3>
+                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
+                        {{ v.title }}
+                    </h3>
                     
-                    <a href="/channel/{{ v.channel_id }}" class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
+                    <a href="https://www.youtube.com/channel/{{ v.channel_id }}" target="_blank" class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
                         <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-white font-bold ring-1 ring-gray-700">{{ v.channel[0] }}</div>
                         <span class="text-xs font-medium text-gray-400 truncate group-hover/channel:text-white transition">{{ v.channel }}</span>
-                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">arrow_forward</span>
+                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">open_in_new</span>
                     </a>
                 </div>
             </div>
@@ -131,7 +140,7 @@
                 <span class="material-symbols-rounded text-4xl text-primary">rocket_launch</span>
             </div>
             <h1 class="text-3xl font-bold text-white mb-2">爆款挖掘机 Pro</h1>
-            <p class="text-gray-500 mb-8">输入关键词，一键获取按增长速度排序的 50 条视频</p>
+            <p class="text-gray-500 mb-8">支持多Key轮询 • 中文单位显示 • 无缝挖掘</p>
         </div>
         {% endif %}
     </div>
@@ -139,11 +148,14 @@
     <div id="keyModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
         <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
             <button onclick="document.getElementById('keyModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-rounded">close</span></button>
-            <h3 class="text-xl font-bold mb-1 text-white">配置 API Key</h3>
-            <p class="text-xs text-gray-500 mb-6">您的 Key 仅存储在本地 Session 中，安全无忧。</p>
+            <h3 class="text-xl font-bold mb-1 text-white">配置 API Keys 池</h3>
+            <p class="text-xs text-gray-500 mb-4">
+                系统会自动轮询使用。当一个 Key 额度耗尽时，自动切换下一个。
+            </p>
             <form action="/" method="POST">
-                <input name="new_api_key" type="password" placeholder="粘贴 AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition">
-                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">保存配置</button>
+                <label class="block text-xs font-bold text-gray-400 mb-2">粘贴 Keys (一行一个)</label>
+                <textarea name="api_keys_input" rows="6" placeholder="AIzaSy...&#10;AIzaSy...&#10;AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition font-mono text-xs leading-relaxed">{% if api_keys %}{{ api_keys|join('\n') }}{% endif %}</textarea>
+                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">保存并使用</button>
             </form>
         </div>
     </div>
