@@ -50,16 +50,12 @@
                 <input name="query" value="{{ query }}" placeholder="输入关键词 (例如: Kpop, Minecraft)..." class="w-full bg-[#111] border border-border-color rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition shadow-lg">
             </div>
             
-            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0">
-                <select name="order" class="bg-[#111] border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[120px]">
-                    <option value="viewCount" {% if order == 'viewCount' %}selected{% endif %}>🔥 最多播放</option>
-                    <option value="relevance" {% if order == 'relevance' %}selected{% endif %}>🎯 最相关</option>
-                    <option value="date" {% if order == 'date' %}selected{% endif %}>🕒 最新发布</option>
-                </select>
-                <select name="duration" class="bg-[#111] border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[100px]">
-                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>24 小时</option>
-                    <option value="72h" {% if duration == '72h' %}selected{% endif %}>3 天</option>
-                    <option value="7d" {% if duration == '7d' %}selected{% endif %}>7 天</option>
+            <div class="flex gap-2">
+                <select name="duration" class="bg-[#111] border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[120px]">
+                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>过去 24 小时</option>
+                    <option value="72h" {% if duration == '72h' %}selected{% endif %}>过去 3 天</option>
+                    <option value="7d" {% if duration == '7d' %}selected{% endif %}>过去 7 天</option>
+                    <option value="30d" {% if duration == '30d' %}selected{% endif %}>过去 30 天</option>
                     <option value="all" {% if duration == 'all' %}selected{% endif %}>不限时间</option>
                 </select>
                 <button type="submit" class="bg-primary hover:bg-[#b3e600] text-black font-bold px-6 rounded-xl transition shadow-[0_0_15px_rgba(204,255,0,0.2)] whitespace-nowrap">
@@ -77,8 +73,10 @@
 
         {% if videos %}
         <div class="flex items-center gap-2 mb-6 text-sm text-gray-500">
-            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full">找到 50+ 个结果</span>
-            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full text-primary">已按 VPH 热度优化排序</span>
+            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full">每页 50 条</span>
+            <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full text-primary flex items-center gap-1">
+                <span class="material-symbols-rounded text-xs">trending_up</span> 已自动按增长速度排序
+            </span>
         </div>
 
         <div class="masonry-grid">
@@ -115,8 +113,8 @@
 
         {% if next_token %}
         <div class="flex justify-center py-12">
-            <a href="/?query={{ query }}&order={{ order }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-[#111] hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
-                加载下一页 <span class="material-symbols-rounded">expand_more</span>
+            <a href="/?query={{ query }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-[#111] hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
+                加载下 50 条 <span class="material-symbols-rounded">expand_more</span>
             </a>
         </div>
         {% endif %}
@@ -132,8 +130,8 @@
             <div class="w-20 h-20 bg-[#111] rounded-full flex items-center justify-center mb-6 border border-border-color shadow-[0_0_30px_rgba(204,255,0,0.1)]">
                 <span class="material-symbols-rounded text-4xl text-primary">rocket_launch</span>
             </div>
-            <h1 class="text-3xl font-bold text-white mb-2">准备好挖掘爆款了吗？</h1>
-            <p class="text-gray-500 mb-8">输入关键词，开始探索 YouTube Shorts 的流量密码</p>
+            <h1 class="text-3xl font-bold text-white mb-2">爆款挖掘机 Pro</h1>
+            <p class="text-gray-500 mb-8">输入关键词，一键获取按增长速度排序的 50 条视频</p>
         </div>
         {% endif %}
     </div>
