@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ViralMonkey Pro - 72h 爆款</title>
+    <title>ViralMonkey Pro - 播放量霸榜</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
     <script>
@@ -18,11 +18,21 @@
         }
     </script>
     <style>
-        .masonry-grid { column-count: 2; column-gap: 1rem; }
-        @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
-        @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
-        @media (min-width: 1440px) { .masonry-grid { column-count: 5; } }
-        .break-inside-avoid { break-inside: avoid; }
+        /* --- 核心修改：从瀑布流改为标准网格布局 --- */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 手机端 2 列 */
+            gap: 1rem;
+        }
+        @media (min-width: 768px) { 
+            .video-grid { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; } /* 平板 3 列 */
+        }
+        @media (min-width: 1024px) { 
+            .video-grid { grid-template-columns: repeat(4, 1fr); } /* 笔记本 4 列 */
+        }
+        @media (min-width: 1440px) { 
+            .video-grid { grid-template-columns: repeat(5, 1fr); } /* 大屏 5 列 */
+        }
     </style>
 </head>
 <body class="bg-bg-main text-white font-sans min-h-screen flex flex-col">
@@ -80,13 +90,13 @@
         <div class="flex items-center gap-2 mb-6 text-sm text-gray-500">
             <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full">每页 50 条</span>
             <span class="bg-[#111] border border-border-color px-3 py-1 rounded-full text-primary flex items-center gap-1">
-                <span class="material-symbols-rounded text-xs">visibility</span> 按播放量 (Views) 排序
+                <span class="material-symbols-rounded text-xs">visibility</span> 按播放量排序 (从左到右)
             </span>
         </div>
 
-        <div class="masonry-grid">
+        <div class="video-grid">
             {% for v in videos %}
-            <div class="break-inside-avoid mb-6 bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <div class="bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col">
                 <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" class="block relative aspect-[9/16] bg-gray-900">
                     <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-700">
                     <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow z-10">
@@ -99,7 +109,7 @@
                     </div>
                 </a>
                 
-                <div class="p-4">
+                <div class="p-4 flex flex-col flex-1">
                     <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
                         <span>{{ v.ago }}</span>
                         <span class="text-white flex items-center gap-1">
@@ -141,7 +151,7 @@
                 <span class="material-symbols-rounded text-4xl text-primary">rocket_launch</span>
             </div>
             <h1 class="text-3xl font-bold text-white mb-2">爆款挖掘机 Pro</h1>
-            <p class="text-gray-500 mb-8">支持多Key轮询 • 默认72h • 播放量排序</p>
+            <p class="text-gray-500 mb-8">支持多Key轮询 • 智能防封 • 播放量排序</p>
         </div>
         {% endif %}
     </div>
