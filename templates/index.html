@@ -38,7 +38,7 @@
                 KEYS: {{ api_keys|length }} 个可用
             </div>
             {% endif %}
-            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="text-sm font-bold hover:text-primary transition bg-gray-800 px-3 py-1.5 rounded-lg">
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="text-sm font-bold hover:text-primary transition bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-700">
                 {% if api_keys %}管理 Keys{% else %}配置 Keys{% endif %}
             </button>
         </div>
@@ -70,8 +70,8 @@
         <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-8 text-center flex flex-col items-center gap-2">
             <span class="material-symbols-rounded text-3xl">error_outline</span>
             <p>{{ error }}</p>
-            {% if "Key" in error %}
-            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm">点击此处添加更多 API Key</button>
+            {% if "Key" in error or "配额" in error %}
+            <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm font-bold mt-2 bg-red-500/20 px-4 py-2 rounded-lg hover:bg-red-500/30">点击此处添加更多 API Key</button>
             {% endif %}
         </div>
         {% endif %}
@@ -104,7 +104,8 @@
                         <span>{{ v.ago }}</span>
                         <span class="text-white flex items-center gap-1">
                             <span class="material-symbols-rounded text-sm">visibility</span> 
-                            {{ v.views|fmt_num }} </span>
+                            {{ v.views|fmt_num }}
+                        </span>
                     </div>
                     <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
                         {{ v.title }}
@@ -140,22 +141,35 @@
                 <span class="material-symbols-rounded text-4xl text-primary">rocket_launch</span>
             </div>
             <h1 class="text-3xl font-bold text-white mb-2">爆款挖掘机 Pro</h1>
-            <p class="text-gray-500 mb-8">支持多Key轮询 • 中文单位显示 • 无缝挖掘</p>
+            <p class="text-gray-500 mb-8">支持多Key轮询 • 智能防封 • 增长率排序</p>
         </div>
         {% endif %}
     </div>
 
     <div id="keyModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+        <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-lg shadow-2xl relative">
             <button onclick="document.getElementById('keyModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-rounded">close</span></button>
-            <h3 class="text-xl font-bold mb-1 text-white">配置 API Keys 池</h3>
-            <p class="text-xs text-gray-500 mb-4">
-                系统会自动轮询使用。当一个 Key 额度耗尽时，自动切换下一个。
-            </p>
+            <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                <span class="material-symbols-rounded text-primary">vpn_key</span> 配置 API Keys
+            </h3>
+            
+            <div class="bg-gray-800/50 rounded-xl p-4 mb-4 border border-gray-700">
+                <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-primary text-sm">help</span> 如何获取免费 API Key?
+                </h4>
+                <ol class="text-[10px] text-gray-400 list-decimal list-inside space-y-1">
+                    <li>访问 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-primary hover:underline font-bold">Google Cloud Console</a> 并登录。</li>
+                    <li>点击左上角 "Select Project" -> "New Project"。</li>
+                    <li>顶部搜 <strong>"YouTube Data API v3"</strong> 并点击 "Enable"。</li>
+                    <li>左侧菜单 "Credentials" -> "Create Credentials" -> <strong>"API Key"</strong>。</li>
+                    <li>推荐使用 2-3 个不同的 Google 账号创建 Key，防止单日限额耗尽。</li>
+                </ol>
+            </div>
+
             <form action="/" method="POST">
-                <label class="block text-xs font-bold text-gray-400 mb-2">粘贴 Keys (一行一个)</label>
-                <textarea name="api_keys_input" rows="6" placeholder="AIzaSy...&#10;AIzaSy...&#10;AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition font-mono text-xs leading-relaxed">{% if api_keys %}{{ api_keys|join('\n') }}{% endif %}</textarea>
-                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">保存并使用</button>
+                <label class="block text-xs font-bold text-gray-400 mb-2">粘贴 Keys (系统会自动轮询，一行一个)</label>
+                <textarea name="api_keys_input" rows="5" placeholder="AIzaSy...&#10;AIzaSy...&#10;AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition font-mono text-xs leading-relaxed">{% if api_keys %}{{ api_keys|join('\n') }}{% endif %}</textarea>
+                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition shadow-lg shadow-primary/20">保存并使用</button>
             </form>
         </div>
     </div>
