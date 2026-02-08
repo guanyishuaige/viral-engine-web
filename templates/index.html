@@ -24,19 +24,12 @@
         }
     </script>
     <style>
-        /* 调整列数，让卡片变小 */
+        /* 紧凑网格布局 */
         .masonry-grid { column-count: 2; column-gap: 1rem; }
         @media (min-width: 640px) { .masonry-grid { column-count: 3; } }
-        @media (min-width: 1024px) { .masonry-grid { column-count: 5; } } /* 电脑上显示5列 */
-        @media (min-width: 1440px) { .masonry-grid { column-count: 6; } } /* 大屏显示6列 */
-        
+        @media (min-width: 1024px) { .masonry-grid { column-count: 5; } }
+        @media (min-width: 1440px) { .masonry-grid { column-count: 6; } }
         .break-inside-avoid { break-inside: avoid; }
-        
-        /* 自定义滚动条 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #101623; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 <body class="bg-[#101623] text-white font-display min-h-screen flex flex-col">
@@ -46,73 +39,87 @@
             <div class="bg-primary/20 p-1.5 rounded-lg text-primary">
                 <span class="material-symbols-outlined text-2xl">ssid_chart</span>
             </div>
-            <div>
-                <h1 class="font-bold text-lg tracking-tight">ViralEngine</h1>
-            </div>
+            <h1 class="font-bold text-lg tracking-tight hidden sm:block">ViralEngine</h1>
         </div>
         
-        <form action="/" method="POST" class="flex-1 max-w-xl mx-6 flex gap-3">
+        <form action="/" method="POST" class="flex-1 max-w-2xl mx-6 flex gap-2">
+            
+            <div class="relative min-w-[100px]">
+                <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-slate-400">
+                    <span class="material-symbols-outlined text-lg">calendar_today</span>
+                </div>
+                <select name="time_filter" class="block w-full pl-8 pr-8 py-2 border border-slate-700 rounded-lg bg-[#1c2536] text-white text-sm focus:ring-1 focus:ring-primary focus:border-primary appearance-none cursor-pointer hover:bg-slate-800 transition-colors">
+                    <option value="24h" {% if time_option == '24h' %}selected{% endif %}>24h</option>
+                    <option value="72h" {% if time_option == '72h' %}selected{% endif %}>72h</option>
+                    <option value="7d" {% if time_option == '7d' %}selected{% endif %}>7 Days</option>
+                    <option value="30d" {% if time_option == '30d' %}selected{% endif %}>30 Days</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-slate-400">
+                    <span class="material-symbols-outlined text-sm">expand_more</span>
+                </div>
+            </div>
+
             <div class="relative w-full group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                     <span class="material-symbols-outlined text-lg">search</span>
                 </div>
-                <input name="query" value="{{ query }}" class="block w-full pl-9 pr-3 py-2 border border-slate-700 rounded-lg leading-5 bg-[#1c2536] text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm" placeholder="输入关键词 (如: AI Story, Minecraft)..." type="text" autocomplete="off"/>
+                <input name="query" value="{{ query }}" class="block w-full pl-9 pr-3 py-2 border border-slate-700 rounded-lg bg-[#1c2536] text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm" placeholder="输入关键词..." type="text" autocomplete="off"/>
             </div>
-            <input type="hidden" name="api_key" value="{{ api_key }}">
             
             <button type="submit" class="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-primary/30 transition-all active:scale-95 whitespace-nowrap text-sm flex items-center gap-1">
                 <span class="material-symbols-outlined text-lg">bolt</span>
-                挖掘
+                <span class="hidden sm:inline">挖掘</span>
             </button>
         </form>
 
         <div class="flex items-center gap-3">
-            {% if not api_key %}
-            <div class="text-red-500 text-xs font-bold flex items-center gap-1 animate-pulse hidden md:flex">
-                <span class="material-symbols-outlined text-sm">warning</span> 未配置 Key
+            {% if api_key %}
+            <div class="hidden md:flex items-center gap-2 bg-[#1c2536] border border-slate-700 px-3 py-1.5 rounded-lg cursor-pointer hover:border-slate-500 transition-colors group" onclick="document.getElementById('apiKeyModal').classList.remove('hidden')">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-xs text-slate-300 font-mono">
+                    {{ api_key[:4] }}...{{ api_key[-4:] }}
+                </span>
+                <span class="material-symbols-outlined text-xs text-slate-500 group-hover:text-white">edit</span>
             </div>
+            {% else %}
+            <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')" class="text-xs font-bold bg-red-500/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">key</span> 配置 Key
+            </button>
             {% endif %}
-            <div class="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-300">
-                <span class="material-symbols-outlined text-sm">person</span>
-            </div>
         </div>
     </header>
 
     <main class="flex-1 p-6 overflow-y-auto">
         
-        {% if not api_key %}
-        <div class="max-w-md mx-auto mb-8 bg-[#1c2536] p-6 rounded-xl border border-red-500/30 shadow-2xl">
-            <h3 class="text-base font-bold mb-3 flex items-center gap-2">⚙️ 首次使用配置</h3>
-            <form action="/" method="POST">
-                <input name="api_key" type="password" placeholder="粘贴你的 YouTube API Key" class="w-full bg-[#101623] border border-slate-700 rounded-lg px-3 py-2 text-white text-sm mb-3 focus:ring-1 focus:ring-primary outline-none">
-                <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg font-bold text-sm">保存 Key</button>
-            </form>
-        </div>
-        {% endif %}
-
         {% if error %}
-        <div class="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-2 rounded-lg mb-6 text-center max-w-xl mx-auto text-sm">
-            {{ error }}
+        <div class="bg-red-500/10 border border-red-500/50 text-red-500 px-4 py-3 rounded-lg mb-6 text-center max-w-xl mx-auto text-sm flex flex-col items-center gap-2">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined">error</span> {{ error }}</span>
+            {% if "配额" in error or "Key" in error %}
+            <button onclick="document.getElementById('apiKeyModal').classList.remove('hidden')" class="underline text-xs hover:text-white">点击此处更换 API Key</button>
+            {% endif %}
         </div>
         {% endif %}
 
         {% if videos %}
+        <div class="flex items-center gap-4 mb-4 px-1">
+            <span class="text-xs text-slate-400">
+                Found {{ videos|length }} videos in 
+                <span class="text-primary font-bold">Last {{ time_option }}</span>
+            </span>
+        </div>
+
         <div class="masonry-grid pb-10">
             {% for video in videos %}
             <div class="break-inside-avoid mb-4 group relative bg-[#1c2536] rounded-xl overflow-hidden border border-slate-800 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1">
-                
                 <a href="https://www.youtube.com/watch?v={{ video.id }}" target="_blank" class="block relative aspect-[9/16] overflow-hidden bg-slate-900 cursor-pointer">
                     <img src="{{ video.thumb }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"/>
                     <div class="absolute inset-0 bg-gradient-to-t from-[#1c2536] via-transparent to-transparent opacity-60"></div>
-                    
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/20">
                          <span class="material-symbols-outlined text-5xl text-white drop-shadow-lg">play_circle</span>
                     </div>
-
                     <div class="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
                         <span class="material-symbols-outlined text-[12px] text-yellow-400">schedule</span> {{ video.hours_ago }}h
                     </div>
-                    
                     <div class="absolute bottom-2 left-3 right-3">
                         <div class="flex items-center gap-1 text-white">
                             <span class="material-symbols-outlined text-sm text-red-500">visibility</span>
@@ -120,29 +127,22 @@
                         </div>
                     </div>
                 </a>
-
                 <div class="p-3">
                     <h3 class="font-bold text-white text-xs leading-snug mb-1.5 line-clamp-2 hover:text-primary transition-colors cursor-pointer" onclick="window.location.href='/analyze/{{ video.id }}'">
                         {{ video.title }}
                     </h3>
-                    
                     <div class="flex items-center justify-between mt-2">
                          <div class="text-[10px] text-slate-400 truncate max-w-[80px]">{{ video.channel }}</div>
-                         
                          <div class="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded">
                             <span class="material-symbols-outlined text-[12px] text-primary">local_fire_department</span>
                             <span class="text-primary font-bold text-xs">{{ video.vph }}</span>
                          </div>
                     </div>
-                    
-                    <a href="/analyze/{{ video.id }}" class="mt-3 block w-full text-center bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] py-1.5 rounded transition-colors">
-                        查看深度分析
-                    </a>
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% elif query %}
+        {% elif query and not error %}
             <div class="text-center py-20 text-slate-500">
                 <span class="material-symbols-outlined text-5xl mb-2 opacity-50">search_off</span>
                 <p class="text-sm">未找到相关视频</p>
@@ -154,6 +154,33 @@
             </div>
         {% endif %}
     </main>
+
+    <div id="apiKeyModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div class="bg-[#1c2536] border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
+            <button onclick="document.getElementById('apiKeyModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">vpn_key</span> API 配置
+            </h3>
+            
+            <p class="text-sm text-slate-400 mb-4">
+                API 余量无法直接查询。如果遇到报错或无法搜索，请在此处更换新的 Key。
+                <br><span class="text-xs opacity-50">(YouTube 每日限额 10,000 units)</span>
+            </p>
+
+            <form action="/" method="POST">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">输入新的 API Key</label>
+                <input name="new_api_key" type="password" placeholder="AIzaSy..." class="w-full bg-[#101623] border border-slate-700 rounded-lg px-4 py-3 text-white mb-4 focus:ring-1 focus:ring-primary outline-none text-sm">
+                
+                <div class="flex gap-3">
+                    <button type="button" onclick="document.getElementById('apiKeyModal').classList.add('hidden')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-2 rounded-lg font-bold text-sm">取消</button>
+                    <button type="submit" class="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded-lg font-bold text-sm">保存并生效</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 </body>
 </html>
