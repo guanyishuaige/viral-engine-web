@@ -23,7 +23,6 @@
         @media (min-width: 1024px) { .video-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (min-width: 1440px) { .video-grid { grid-template-columns: repeat(5, 1fr); } }
         
-        /* 频道列表的 Grid */
         .channel-grid { display: grid; grid-template-columns: repeat(1, 1fr); gap: 1rem; }
         @media (min-width: 768px) { .channel-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1280px) { .channel-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -38,7 +37,7 @@
         </div>
 
         <nav class="flex-1 px-4 py-6 space-y-2">
-            <a href="/?mode=videos&query={{ query }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all {% if mode == 'videos' %}bg-primary text-black font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]{% else %}text-gray-400 hover:bg-white/5 hover:text-white{% endif %}">
+            <a href="/?mode=videos&query={{ query }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all {% if mode == 'videos' and not request.args.get('show_history') %}bg-primary text-black font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]{% else %}text-gray-400 hover:bg-white/5 hover:text-white{% endif %}">
                 <span class="material-symbols-rounded">movie</span>
                 视频挖掘
             </a>
@@ -47,6 +46,11 @@
                 <span class="material-symbols-rounded">person_search</span>
                 频道侦探
             </a>
+
+            <button onclick="toggleHistoryView()" id="btn-history" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-gray-400 hover:bg-white/5 hover:text-white">
+                <span class="material-symbols-rounded">history</span>
+                历史记录
+            </button>
         </nav>
 
         <div class="p-4 border-t border-border-color">
@@ -68,9 +72,8 @@
         <header class="h-20 border-b border-border-color bg-bg-main/95 backdrop-blur flex items-center justify-between px-6 z-40">
             <button class="md:hidden text-gray-400 mr-4"><span class="material-symbols-rounded">menu</span></button>
 
-            <form action="/" method="GET" class="flex-1 max-w-4xl flex items-center gap-3">
+            <form id="search-form" action="/" method="GET" class="flex-1 max-w-4xl flex items-center gap-3 transition-opacity duration-300">
                 <input type="hidden" name="mode" value="{{ mode }}">
-                
                 <div class="flex-1 relative group">
                     <span class="absolute left-4 top-3.5 text-gray-500 material-symbols-rounded group-focus-within:text-primary transition">search</span>
                     <input name="query" value="{{ query }}" placeholder="{% if mode == 'channels' %}输入关键词，寻找最近爆火的频道...{% else %}输入关键词，挖掘爆款视频...{% endif %}" class="w-full bg-bg-card border border-border-color rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition shadow-lg">
@@ -89,132 +92,155 @@
                     <span class="material-symbols-rounded">search</span> 搜索
                 </button>
             </form>
+
+            <div id="history-header" class="hidden flex-1 text-xl font-bold items-center gap-2">
+                <span class="material-symbols-rounded text-primary">history</span> 
+                浏览历史归档
+                <span class="text-xs font-normal text-gray-500 bg-bg-card px-2 py-1 rounded ml-2 border border-border-color">北京时间 • 本地存储</span>
+            </div>
+            
+            <button id="clear-history-btn" onclick="clearHistory()" class="hidden ml-4 text-xs text-red-500 hover:text-red-400 border border-red-900 bg-red-900/10 px-3 py-2 rounded-lg transition">
+                清空记录
+            </button>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
             
-            {% if error %}
-            <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-center flex flex-col items-center gap-2 max-w-2xl mx-auto">
-                <span class="material-symbols-rounded text-3xl">error_outline</span>
-                <p>{{ error }}</p>
-                {% if "Key" in error or "配额" in error %}
-                <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm font-bold mt-2">点击此处添加更多 API Key</button>
-                {% endif %}
-            </div>
-            {% endif %}
-
-            {% if results %}
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="text-xl font-bold text-white">
-                        {% if mode == 'channels' %}🕵️ 发现流量频道{% else %}🔥 爆款视频{% endif %}
-                    </span>
-                    <span class="bg-bg-card border border-border-color px-3 py-1 rounded-full text-xs text-gray-400">
-                        {{ results|length }} 个结果
-                    </span>
-                    {% if mode == 'videos' %}
-                    <span class="bg-bg-card border border-border-color px-3 py-1 rounded-full text-xs text-primary flex items-center gap-1">
-                        <span class="material-symbols-rounded text-xs">visibility</span> 按播放量排序
-                    </span>
+            <div id="results-view">
+                {% if error %}
+                <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-center flex flex-col items-center gap-2 max-w-2xl mx-auto">
+                    <span class="material-symbols-rounded text-3xl">error_outline</span>
+                    <p>{{ error }}</p>
+                    {% if "Key" in error or "配额" in error %}
+                    <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm font-bold mt-2">点击此处添加更多 API Key</button>
                     {% endif %}
                 </div>
+                {% endif %}
 
-                {% if mode == 'channels' %}
-                    <div class="channel-grid pb-20">
-                        {% for c in results %}
-                        <div class="bg-bg-card border border-border-color rounded-xl p-5 hover:border-primary/50 transition duration-300 flex items-start gap-4 group relative overflow-hidden">
-                            <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" class="shrink-0 relative">
-                                <img src="{{ c.thumb }}" class="w-16 h-16 rounded-full border-2 border-border-color group-hover:border-primary transition">
-                            </a>
-                            
-                            <div class="flex-1 min-w-0">
-                                <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" class="block">
-                                    <h3 class="font-bold text-lg text-white truncate hover:text-primary transition">{{ c.title }}</h3>
+                {% if results %}
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="text-xl font-bold text-white">
+                            {% if mode == 'channels' %}🕵️ 发现流量频道{% else %}🔥 爆款视频{% endif %}
+                        </span>
+                        <span class="bg-bg-card border border-border-color px-3 py-1 rounded-full text-xs text-gray-400">
+                            {{ results|length }} 个结果
+                        </span>
+                        {% if mode == 'videos' %}
+                        <span class="bg-bg-card border border-border-color px-3 py-1 rounded-full text-xs text-primary flex items-center gap-1">
+                            <span class="material-symbols-rounded text-xs">visibility</span> 按播放量排序
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    {% if mode == 'channels' %}
+                        <div class="channel-grid pb-20">
+                            {% for c in results %}
+                            <div class="bg-bg-card border border-border-color rounded-xl p-5 hover:border-primary/50 transition duration-300 flex items-start gap-4 group relative overflow-hidden">
+                                <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" 
+                                   onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')"
+                                   class="shrink-0 relative">
+                                    <img src="{{ c.thumb }}" class="w-16 h-16 rounded-full border-2 border-border-color group-hover:border-primary transition">
                                 </a>
-                                <div class="text-sm text-gray-500 mb-3 flex items-center gap-3">
-                                    <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">group</span> {{ c.subs|fmt_num }} 粉丝</span>
-                                    <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">video_library</span> {{ c.video_count }} 视频</span>
-                                </div>
                                 
-                                <div class="bg-black/50 rounded-lg p-2 border border-border-color/50">
-                                    <div class="text-[10px] text-primary uppercase font-bold mb-1">近期流量密码 (30天内)</div>
-                                    <a href="https://www.youtube.com/watch?v={{ c.viral_video_id }}" target="_blank" class="flex items-center gap-2 group/video hover:bg-white/5 rounded p-1 transition">
-                                        <span class="material-symbols-rounded text-red-500 text-sm">play_circle</span>
-                                        <div class="truncate text-xs text-gray-300 group-hover/video:text-white flex-1">{{ c.viral_video_title }}</div>
-                                        <div class="text-xs font-bold text-white whitespace-nowrap">{{ c.viral_views|fmt_num }}</div>
+                                <div class="flex-1 min-w-0">
+                                    <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" 
+                                       onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')"
+                                       class="block">
+                                        <h3 class="font-bold text-lg text-white truncate hover:text-primary transition">{{ c.title }}</h3>
+                                    </a>
+                                    <div class="text-sm text-gray-500 mb-3 flex items-center gap-3">
+                                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">group</span> {{ c.subs|fmt_num }} 粉丝</span>
+                                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">video_library</span> {{ c.video_count }} 视频</span>
+                                    </div>
+                                    <div class="bg-black/50 rounded-lg p-2 border border-border-color/50">
+                                        <div class="text-[10px] text-primary uppercase font-bold mb-1">近期流量密码 (30天内)</div>
+                                        <a href="https://www.youtube.com/watch?v={{ c.viral_video_id }}" target="_blank" 
+                                           onclick="saveHistory('video', '{{ c.viral_video_id }}', '{{ c.viral_video_title|replace('\'', '\\\'') }}', '', '{{ c.viral_views|fmt_num }} views')"
+                                           class="flex items-center gap-2 group/video hover:bg-white/5 rounded p-1 transition">
+                                            <span class="material-symbols-rounded text-red-500 text-sm">play_circle</span>
+                                            <div class="truncate text-xs text-gray-300 group-hover/video:text-white flex-1">{{ c.viral_video_title }}</div>
+                                            <div class="text-xs font-bold text-white whitespace-nowrap">{{ c.viral_views|fmt_num }}</div>
+                                        </a>
+                                    </div>
+                                </div>
+                                <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" class="absolute top-4 right-4 text-gray-600 hover:text-white transition">
+                                    <span class="material-symbols-rounded">open_in_new</span>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="video-grid pb-20">
+                            {% for v in results %}
+                            <div class="bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col">
+                                <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" 
+                                   onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views')"
+                                   class="block relative aspect-[9/16] bg-gray-900">
+                                    <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-700">
+                                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow z-10">
+                                        {{ v.vph }}/hr
+                                    </div>
+                                </a>
+                                <div class="p-4 flex flex-col flex-1">
+                                    <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
+                                        <span>{{ v.ago }}</span>
+                                        <span class="text-white flex items-center gap-1">
+                                            <span class="material-symbols-rounded text-sm">visibility</span> 
+                                            {{ v.views|fmt_num }}
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" 
+                                        onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views'); window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
+                                        {{ v.title }}
+                                    </h3>
+                                    <a href="https://www.youtube.com/channel/{{ v.channel_id }}" target="_blank" 
+                                       onclick="saveHistory('channel', '{{ v.channel_id }}', '{{ v.channel|replace('\'', '\\\'') }}', '', '来源: 视频页')"
+                                       class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
+                                        <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-white font-bold ring-1 ring-gray-700">{{ v.channel[0] }}</div>
+                                        <span class="text-xs font-medium text-gray-400 truncate group-hover/channel:text-white transition">{{ v.channel }}</span>
+                                        <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">open_in_new</span>
                                     </a>
                                 </div>
                             </div>
-                            
-                            <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" class="absolute top-4 right-4 text-gray-600 hover:text-white transition">
-                                <span class="material-symbols-rounded">open_in_new</span>
-                            </a>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
-                    </div>
+                    {% endif %}
 
-                {% else %}
-                    <div class="video-grid pb-20">
-                        {% for v in results %}
-                        <div class="bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col">
-                            <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" class="block relative aspect-[9/16] bg-gray-900">
-                                <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-700">
-                                <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow z-10">
-                                    {{ v.vph }}/hr
-                                </div>
-                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/20 backdrop-blur-[1px]">
-                                    <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                                        <span class="material-symbols-rounded text-3xl text-black ml-1">play_arrow</span>
-                                    </div>
-                                </div>
-                            </a>
-                            <div class="p-4 flex flex-col flex-1">
-                                <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
-                                    <span>{{ v.ago }}</span>
-                                    <span class="text-white flex items-center gap-1">
-                                        <span class="material-symbols-rounded text-sm">visibility</span> 
-                                        {{ v.views|fmt_num }}
-                                    </span>
-                                </div>
-                                <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
-                                    {{ v.title }}
-                                </h3>
-                                <a href="https://www.youtube.com/channel/{{ v.channel_id }}" target="_blank" class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
-                                    <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-white font-bold ring-1 ring-gray-700">{{ v.channel[0] }}</div>
-                                    <span class="text-xs font-medium text-gray-400 truncate group-hover/channel:text-white transition">{{ v.channel }}</span>
-                                    <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">open_in_new</span>
-                                </a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
                     {% if next_token %}
                     <div class="flex justify-center py-12">
-                        <a href="/?mode=videos&query={{ query }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-bg-card hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
+                        <a href="/?mode={{ mode }}&query={{ query }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-bg-card hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
                             加载下 50 条 <span class="material-symbols-rounded">expand_more</span>
                         </a>
                     </div>
                     {% endif %}
-                {% endif %}
 
-            {% elif query and not error %}
-                <div class="flex flex-col items-center justify-center py-32 text-gray-600">
-                    <span class="material-symbols-rounded text-6xl opacity-30 mb-4">search_off</span>
-                    <p class="text-lg">未找到相关结果</p>
-                </div>
-            {% else %}
-                <div class="flex flex-col items-center justify-center h-[70vh] text-center max-w-2xl mx-auto">
-                    <div class="w-24 h-24 bg-bg-card rounded-full flex items-center justify-center mb-8 border border-border-color shadow-[0_0_50px_rgba(204,255,0,0.05)]">
-                        <span class="material-symbols-rounded text-5xl text-primary">smart_toy</span>
+                {% elif query and not error %}
+                    <div class="flex flex-col items-center justify-center py-32 text-gray-600">
+                        <span class="material-symbols-rounded text-6xl opacity-30 mb-4">search_off</span>
+                        <p class="text-lg">未找到相关结果</p>
                     </div>
-                    <h1 class="text-4xl font-bold text-white mb-4 tracking-tight">发现 YouTube Shorts 的<span class="text-primary">流量密码</span></h1>
-                    <p class="text-gray-500 mb-8 text-lg">
-                        使用左侧菜单切换功能。<br>
-                        <strong>视频挖掘</strong>：寻找当下最火的短视频。<br>
-                        <strong>频道侦探</strong>：寻找最近流量爆发的利基账号。
-                    </p>
+                {% else %}
+                    <div class="flex flex-col items-center justify-center h-[70vh] text-center max-w-2xl mx-auto">
+                        <div class="w-24 h-24 bg-bg-card rounded-full flex items-center justify-center mb-8 border border-border-color shadow-[0_0_50px_rgba(204,255,0,0.05)]">
+                            <span class="material-symbols-rounded text-5xl text-primary">smart_toy</span>
+                        </div>
+                        <h1 class="text-4xl font-bold text-white mb-4 tracking-tight">发现 YouTube Shorts 的<span class="text-primary">流量密码</span></h1>
+                        <p class="text-gray-500 mb-8 text-lg">
+                            输入关键词开始挖掘。<br>点击任何视频或频道，自动归档至“历史记录”。
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div id="history-view" class="hidden">
+                <div id="history-list" class="space-y-3 pb-20"></div>
+                <div id="history-empty" class="hidden flex flex-col items-center justify-center py-32 text-gray-600">
+                    <span class="material-symbols-rounded text-6xl opacity-30 mb-4">history_toggle_off</span>
+                    <p class="text-lg">暂无浏览记录</p>
+                    <p class="text-sm mt-2 opacity-50">记录功能不消耗 API，去点几个视频试试！</p>
                 </div>
-            {% endif %}
+            </div>
+
         </div>
     </main>
 
@@ -242,6 +268,124 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function saveHistory(type, id, title, thumb, stats) {
+            // 强制计算北京时间 (UTC+8)
+            // 无论你指纹浏览器设置在纽约还是伦敦，这里都显示北京时间
+            const d = new Date();
+            const localTime = d.getTime();
+            const localOffset = d.getTimezoneOffset() * 60000; // 本地与UTC的偏差(ms)
+            const utc = localTime + localOffset; // 得到纯净UTC时间
+            const beijing = new Date(utc + (3600000 * 8)); // UTC + 8小时
+
+            const y = beijing.getFullYear();
+            const m = (beijing.getMonth() + 1).toString().padStart(2, '0');
+            const day = beijing.getDate().toString().padStart(2, '0');
+            const h = beijing.getHours().toString().padStart(2, '0');
+            const min = beijing.getMinutes().toString().padStart(2, '0');
+
+            const timeStr = `${y}-${m}-${day} ${h}:${min}`;
+            
+            const item = {
+                type: type, // 'video' or 'channel'
+                id: id,
+                title: title,
+                thumb: thumb,
+                stats: stats,
+                time: timeStr,
+                timestamp: d.getTime()
+            };
+
+            let history = JSON.parse(localStorage.getItem('viral_history') || '[]');
+            history = history.filter(h => h.id !== id);
+            history.unshift(item);
+            if (history.length > 100) history.pop(); // 记录最近100条
+
+            localStorage.setItem('viral_history', JSON.stringify(history));
+        }
+
+        function toggleHistoryView() {
+            const resultsView = document.getElementById('results-view');
+            const historyView = document.getElementById('history-view');
+            const searchForm = document.getElementById('search-form');
+            const historyHeader = document.getElementById('history-header');
+            const clearBtn = document.getElementById('clear-history-btn');
+            const btnHistory = document.getElementById('btn-history');
+
+            resultsView.classList.add('hidden');
+            searchForm.classList.add('hidden');
+            historyView.classList.remove('hidden');
+            historyHeader.classList.remove('hidden');
+            historyHeader.classList.add('flex');
+            clearBtn.classList.remove('hidden');
+
+            // 激活菜单样式
+            btnHistory.classList.add('bg-primary', 'text-black', 'font-bold');
+            btnHistory.classList.remove('text-gray-400');
+
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const listEl = document.getElementById('history-list');
+            const emptyEl = document.getElementById('history-empty');
+            const history = JSON.parse(localStorage.getItem('viral_history') || '[]');
+
+            listEl.innerHTML = '';
+
+            if (history.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+
+            history.forEach(item => {
+                const isVideo = item.type === 'video';
+                const url = isVideo ? `https://www.youtube.com/watch?v=${item.id}` : `https://www.youtube.com/channel/${item.id}`;
+                const icon = isVideo ? 'movie' : 'person';
+                
+                const thumbHtml = item.thumb 
+                    ? `<img src="${item.thumb}" class="w-12 h-12 rounded object-cover border border-border-color">`
+                    : `<div class="w-12 h-12 rounded bg-gray-800 flex items-center justify-center border border-border-color"><span class="material-symbols-rounded text-gray-500">${icon}</span></div>`;
+
+                const html = `
+                    <div class="bg-bg-card border border-border-color rounded-xl p-3 flex items-center gap-4 hover:border-primary/50 transition group">
+                        <div class="text-[10px] text-gray-500 font-mono w-24 shrink-0 text-right">
+                            ${item.time}
+                        </div>
+                        
+                        <a href="${url}" target="_blank" class="shrink-0">
+                            ${thumbHtml}
+                        </a>
+                        
+                        <div class="flex-1 min-w-0">
+                            <a href="${url}" target="_blank" class="block font-bold text-sm text-gray-200 truncate group-hover:text-white">
+                                <span class="text-xs bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded mr-2 border border-border-color uppercase">${item.type}</span>
+                                ${item.title}
+                            </a>
+                            <div class="text-xs text-primary mt-1">
+                                数据快照: ${item.stats}
+                            </div>
+                        </div>
+
+                        <a href="${url}" target="_blank" class="text-gray-600 hover:text-primary p-2">
+                            <span class="material-symbols-rounded">open_in_new</span>
+                        </a>
+                    </div>
+                `;
+                listEl.innerHTML += html;
+            });
+        }
+
+        function clearHistory() {
+            if(confirm('确定要清空所有浏览记录吗？')) {
+                localStorage.removeItem('viral_history');
+                renderHistoryList();
+            }
+        }
+    </script>
 
 </body>
 </html>
