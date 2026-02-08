@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>ViralMonkey Pro</title>
+    <title>ViralMonkey Pro - 云端全同步</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -18,6 +19,7 @@
         }
     </script>
     <style>
+        /* 标准网格布局：从左到右排列 */
         .video-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
         @media (min-width: 768px) { .video-grid { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; } }
         @media (min-width: 1024px) { .video-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -38,37 +40,47 @@
 
         <nav class="flex-1 px-4 py-6 space-y-2">
             <a href="/?mode=videos&query={{ query }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all {% if mode == 'videos' and not request.args.get('show_history') %}bg-primary text-black font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]{% else %}text-gray-400 hover:bg-white/5 hover:text-white{% endif %}">
-                <span class="material-symbols-rounded">movie</span>
-                视频挖掘
+                <span class="material-symbols-rounded">movie</span> 视频挖掘
             </a>
-            
             <a href="/?mode=channels&query={{ query }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all {% if mode == 'channels' %}bg-primary text-black font-bold shadow-[0_0_15px_rgba(204,255,0,0.3)]{% else %}text-gray-400 hover:bg-white/5 hover:text-white{% endif %}">
-                <span class="material-symbols-rounded">person_search</span>
-                频道侦探
+                <span class="material-symbols-rounded">person_search</span> 频道侦探
             </a>
-
             <button onclick="toggleHistoryView()" id="btn-history" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-gray-400 hover:bg-white/5 hover:text-white">
-                <span class="material-symbols-rounded">history</span>
-                历史记录
+                <span class="material-symbols-rounded">history</span> 历史记录
             </button>
         </nav>
 
-        <div class="p-4 border-t border-border-color">
-            <div class="bg-bg-card rounded-xl p-4 border border-border-color">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-gray-500 font-bold uppercase">API Status</span>
-                    <span class="w-2 h-2 rounded-full {% if api_keys %}bg-green-500 animate-pulse{% else %}bg-red-500{% endif %}"></span>
+        <div class="p-4 border-t border-border-color space-y-3">
+            <div id="user-panel" class="hidden bg-bg-card rounded-xl p-3 border border-border-color">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">U</div>
+                    <div class="flex-1 min-w-0">
+                        <div id="user-email" class="text-xs text-white truncate font-bold"></div>
+                        <div class="text-[10px] text-green-500 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 全局同步中
+                        </div>
+                    </div>
                 </div>
-                <div class="text-xs text-white font-mono mb-2">
-                    {% if api_keys %}{{ api_keys|length }} Keys Active{% else %}No Keys{% endif %}
+                <button onclick="handleLogout()" class="w-full text-xs bg-gray-800 hover:bg-red-900/30 hover:text-red-400 text-gray-400 py-1.5 rounded transition">退出登录</button>
+            </div>
+
+            <button id="login-btn-sidebar" onclick="document.getElementById('authModal').classList.remove('hidden')" class="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold transition">
+                <span class="material-symbols-rounded">login</span> 登录同步所有数据
+            </button>
+
+            <div class="bg-bg-card rounded-xl p-3 border border-border-color cursor-pointer hover:border-primary/50 transition" onclick="document.getElementById('keyModal').classList.remove('hidden')">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-500 font-bold uppercase">API Keys</span>
+                    <span id="key-status-dot" class="w-2 h-2 rounded-full {% if api_keys %}bg-green-500 animate-pulse{% else %}bg-red-500{% endif %}"></span>
                 </div>
-                <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="w-full text-xs bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg transition border border-gray-700">配置 Keys</button>
+                <div id="key-count-text" class="text-xs text-white font-mono mt-1">
+                    {% if api_keys %}{{ api_keys|length }} Keys Loaded{% else %}No Keys{% endif %}
+                </div>
             </div>
         </div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden">
-        
         <header class="h-20 border-b border-border-color bg-bg-main/95 backdrop-blur flex items-center justify-between px-6 z-40">
             <button class="md:hidden text-gray-400 mr-4"><span class="material-symbols-rounded">menu</span></button>
 
@@ -76,47 +88,31 @@
                 <input type="hidden" name="mode" value="{{ mode }}">
                 <div class="flex-1 relative group">
                     <span class="absolute left-4 top-3.5 text-gray-500 material-symbols-rounded group-focus-within:text-primary transition">search</span>
-                    <input name="query" value="{{ query }}" placeholder="{% if mode == 'channels' %}输入关键词，寻找最近爆火的频道...{% else %}输入关键词，挖掘爆款视频...{% endif %}" class="w-full bg-bg-card border border-border-color rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition shadow-lg">
+                    <input name="query" value="{{ query }}" placeholder="{% if mode == 'channels' %}输入关键词，寻找流量频道...{% else %}输入关键词，挖掘爆款视频...{% endif %}" class="w-full bg-bg-card border border-border-color rounded-xl pl-12 pr-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-white placeholder-gray-600 transition shadow-lg">
                 </div>
-
                 {% if mode == 'videos' %}
                 <select name="duration" class="bg-bg-card border border-border-color rounded-xl px-4 py-3 text-sm focus:border-primary outline-none cursor-pointer text-gray-300 min-w-[120px] hidden sm:block">
-                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>24 小时</option>
                     <option value="72h" {% if duration == '72h' %}selected{% endif %}>3 天 (默认)</option>
+                    <option value="24h" {% if duration == '24h' %}selected{% endif %}>24 小时</option>
                     <option value="7d" {% if duration == '7d' %}selected{% endif %}>7 天</option>
                     <option value="30d" {% if duration == '30d' %}selected{% endif %}>30 天</option>
                 </select>
                 {% endif %}
-
                 <button type="submit" class="bg-primary hover:bg-[#b3e600] text-black font-bold px-6 py-3 rounded-xl transition shadow-[0_0_15px_rgba(204,255,0,0.2)] whitespace-nowrap flex items-center gap-2">
                     <span class="material-symbols-rounded">search</span> 搜索
                 </button>
             </form>
 
             <div id="history-header" class="hidden flex-1 text-xl font-bold items-center gap-2">
-                <span class="material-symbols-rounded text-primary">history</span> 
-                浏览历史归档
-                <span class="text-xs font-normal text-gray-500 bg-bg-card px-2 py-1 rounded ml-2 border border-border-color">北京时间 • 本地存储</span>
+                <span class="material-symbols-rounded text-primary">cloud_sync</span> 浏览历史
+                <span id="history-status-badge" class="text-xs font-normal text-gray-500 bg-bg-card px-2 py-1 rounded ml-2 border border-border-color">本地模式</span>
             </div>
-            
-            <button id="clear-history-btn" onclick="clearHistory()" class="hidden ml-4 text-xs text-red-500 hover:text-red-400 border border-red-900 bg-red-900/10 px-3 py-2 rounded-lg transition">
-                清空记录
-            </button>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
-            
             <div id="results-view">
-                {% if error %}
-                <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-center flex flex-col items-center gap-2 max-w-2xl mx-auto">
-                    <span class="material-symbols-rounded text-3xl">error_outline</span>
-                    <p>{{ error }}</p>
-                    {% if "Key" in error or "配额" in error %}
-                    <button onclick="document.getElementById('keyModal').classList.remove('hidden')" class="underline text-sm font-bold mt-2">点击此处添加更多 API Key</button>
-                    {% endif %}
-                </div>
-                {% endif %}
-
+                {% if error %}<div class="bg-red-500/10 text-red-400 p-4 rounded-xl mb-6 text-center">{{ error }}</div>{% endif %}
+                
                 {% if results %}
                     <div class="flex items-center gap-3 mb-6">
                         <span class="text-xl font-bold text-white">
@@ -136,27 +132,20 @@
                         <div class="channel-grid pb-20">
                             {% for c in results %}
                             <div class="bg-bg-card border border-border-color rounded-xl p-5 hover:border-primary/50 transition duration-300 flex items-start gap-4 group relative overflow-hidden">
-                                <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" 
-                                   onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')"
-                                   class="shrink-0 relative">
+                                <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')" class="shrink-0 relative">
                                     <img src="{{ c.thumb }}" class="w-16 h-16 rounded-full border-2 border-border-color group-hover:border-primary transition">
                                 </a>
-                                
                                 <div class="flex-1 min-w-0">
-                                    <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" 
-                                       onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')"
-                                       class="block">
+                                    <a href="https://www.youtube.com/channel/{{ c.id }}" target="_blank" onclick="saveHistory('channel', '{{ c.id }}', '{{ c.title|replace('\'', '\\\'') }}', '{{ c.thumb }}', '{{ c.subs }} 粉丝')" class="block">
                                         <h3 class="font-bold text-lg text-white truncate hover:text-primary transition">{{ c.title }}</h3>
                                     </a>
                                     <div class="text-sm text-gray-500 mb-3 flex items-center gap-3">
-                                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">group</span> {{ c.subs|fmt_num }} 粉丝</span>
-                                        <span class="flex items-center gap-1"><span class="material-symbols-rounded text-sm">video_library</span> {{ c.video_count }} 视频</span>
+                                        <span>{{ c.subs|fmt_num }} 粉丝</span>
+                                        <span>{{ c.video_count }} 视频</span>
                                     </div>
                                     <div class="bg-black/50 rounded-lg p-2 border border-border-color/50">
-                                        <div class="text-[10px] text-primary uppercase font-bold mb-1">近期流量密码 (30天内)</div>
-                                        <a href="https://www.youtube.com/watch?v={{ c.viral_video_id }}" target="_blank" 
-                                           onclick="saveHistory('video', '{{ c.viral_video_id }}', '{{ c.viral_video_title|replace('\'', '\\\'') }}', '', '{{ c.viral_views|fmt_num }} views')"
-                                           class="flex items-center gap-2 group/video hover:bg-white/5 rounded p-1 transition">
+                                        <div class="text-[10px] text-primary uppercase font-bold mb-1">流量密码</div>
+                                        <a href="https://www.youtube.com/watch?v={{ c.viral_video_id }}" target="_blank" onclick="saveHistory('video', '{{ c.viral_video_id }}', '{{ c.viral_video_title|replace('\'', '\\\'') }}', '', '{{ c.viral_views|fmt_num }} views')" class="flex items-center gap-2 group/video hover:bg-white/5 rounded p-1 transition">
                                             <span class="material-symbols-rounded text-red-500 text-sm">play_circle</span>
                                             <div class="truncate text-xs text-gray-300 group-hover/video:text-white flex-1">{{ c.viral_video_title }}</div>
                                             <div class="text-xs font-bold text-white whitespace-nowrap">{{ c.viral_views|fmt_num }}</div>
@@ -172,220 +161,307 @@
                     {% else %}
                         <div class="video-grid pb-20">
                             {% for v in results %}
-                            <div class="bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col">
-                                <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" 
-                                   onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views')"
-                                   class="block relative aspect-[9/16] bg-gray-900">
+                            <div class="bg-bg-card rounded-xl overflow-hidden border border-border-color group hover:border-primary/50 transition flex flex-col">
+                                 <a href="https://youtube.com/watch?v={{ v.id }}" target="_blank" onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views')" class="block relative aspect-[9/16] bg-gray-900">
                                     <img src="{{ v.thumb }}" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition duration-700">
-                                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded shadow z-10">
-                                        {{ v.vph }}/hr
+                                    <div class="absolute top-2 right-2 bg-primary text-black text-xs font-bold px-2 py-1 rounded">{{ v.vph }}/hr</div>
+                                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/20 backdrop-blur-[1px]">
+                                        <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                                            <span class="material-symbols-rounded text-3xl text-black ml-1">play_arrow</span>
+                                        </div>
                                     </div>
-                                </a>
-                                <div class="p-4 flex flex-col flex-1">
+                                 </a>
+                                 <div class="p-4 flex flex-col flex-1">
                                     <div class="text-[10px] text-gray-500 mb-2 flex justify-between uppercase font-bold tracking-wider">
                                         <span>{{ v.ago }}</span>
-                                        <span class="text-white flex items-center gap-1">
-                                            <span class="material-symbols-rounded text-sm">visibility</span> 
-                                            {{ v.views|fmt_num }}
-                                        </span>
+                                        <span class="text-white flex items-center gap-1"><span class="material-symbols-rounded text-sm">visibility</span> {{ v.views|fmt_num }}</span>
                                     </div>
-                                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" 
-                                        onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views'); window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
+                                    <h3 class="font-bold text-sm line-clamp-2 leading-snug mb-3 text-gray-200 group-hover:text-primary cursor-pointer" onclick="saveHistory('video', '{{ v.id }}', '{{ v.title|replace('\'', '\\\'') }}', '{{ v.thumb }}', '{{ v.views|fmt_num }} views'); window.open('https://youtube.com/watch?v={{ v.id }}', '_blank')">
                                         {{ v.title }}
                                     </h3>
-                                    <a href="https://www.youtube.com/channel/{{ v.channel_id }}" target="_blank" 
-                                       onclick="saveHistory('channel', '{{ v.channel_id }}', '{{ v.channel|replace('\'', '\\\'') }}', '', '来源: 视频页')"
-                                       class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
+                                    <a href="https://www.youtube.com/channel/{{ v.channel_id }}" target="_blank" onclick="saveHistory('channel', '{{ v.channel_id }}', '{{ v.channel|replace('\'', '\\\'') }}', '', '来源: 视频页')" class="flex items-center gap-2 pt-3 border-t border-border-color hover:bg-white/5 -mx-4 px-4 py-2 transition mt-auto group/channel">
                                         <div class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-white font-bold ring-1 ring-gray-700">{{ v.channel[0] }}</div>
                                         <span class="text-xs font-medium text-gray-400 truncate group-hover/channel:text-white transition">{{ v.channel }}</span>
                                         <span class="ml-auto material-symbols-rounded text-gray-600 text-sm group-hover/channel:text-primary">open_in_new</span>
                                     </a>
-                                </div>
+                                 </div>
                             </div>
                             {% endfor %}
                         </div>
                     {% endif %}
-
+                    
                     {% if next_token %}
                     <div class="flex justify-center py-12">
                         <a href="/?mode={{ mode }}&query={{ query }}&duration={{ duration }}&page_token={{ next_token }}" class="bg-bg-card hover:bg-primary hover:text-black text-white border border-border-color px-8 py-3 rounded-full font-bold transition flex items-center gap-2 shadow-lg">
-                            加载下 50 条 <span class="material-symbols-rounded">expand_more</span>
+                            加载更多 <span class="material-symbols-rounded">expand_more</span>
                         </a>
                     </div>
                     {% endif %}
-
                 {% elif query and not error %}
-                    <div class="flex flex-col items-center justify-center py-32 text-gray-600">
+                    <div class="py-32 text-center text-gray-600">
                         <span class="material-symbols-rounded text-6xl opacity-30 mb-4">search_off</span>
-                        <p class="text-lg">未找到相关结果</p>
+                        <p class="text-lg">未找到结果</p>
                     </div>
                 {% else %}
-                    <div class="flex flex-col items-center justify-center h-[70vh] text-center max-w-2xl mx-auto">
-                        <div class="w-24 h-24 bg-bg-card rounded-full flex items-center justify-center mb-8 border border-border-color shadow-[0_0_50px_rgba(204,255,0,0.05)]">
-                            <span class="material-symbols-rounded text-5xl text-primary">smart_toy</span>
-                        </div>
-                        <h1 class="text-4xl font-bold text-white mb-4 tracking-tight">发现 YouTube Shorts 的<span class="text-primary">流量密码</span></h1>
-                        <p class="text-gray-500 mb-8 text-lg">
-                            输入关键词开始挖掘。<br>点击任何视频或频道，自动归档至“历史记录”。
-                        </p>
+                    <div class="flex flex-col items-center justify-center h-[60vh] text-center">
+                        <span class="material-symbols-rounded text-5xl text-primary mb-4">smart_toy</span>
+                        <h1 class="text-3xl font-bold text-white mb-4">登录解锁<span class="text-primary">云端同步</span></h1>
+                        <p class="text-gray-500">API Key 和 历史记录 自动跟随账号</p>
                     </div>
                 {% endif %}
             </div>
 
             <div id="history-view" class="hidden">
                 <div id="history-list" class="space-y-3 pb-20"></div>
-                <div id="history-empty" class="hidden flex flex-col items-center justify-center py-32 text-gray-600">
-                    <span class="material-symbols-rounded text-6xl opacity-30 mb-4">history_toggle_off</span>
-                    <p class="text-lg">暂无浏览记录</p>
-                    <p class="text-sm mt-2 opacity-50">记录功能不消耗 API，去点几个视频试试！</p>
-                </div>
+                <div id="history-empty" class="hidden text-center py-32 text-gray-600">暂无记录</div>
             </div>
-
         </div>
     </main>
 
+    <div id="authModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-sm shadow-2xl relative">
+            <button onclick="document.getElementById('authModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-rounded">close</span></button>
+            <h3 class="text-xl font-bold mb-6 text-white text-center">登录 / 注册</h3>
+            <div id="auth-step-1">
+                <input id="email-input" type="email" placeholder="name@example.com" class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none">
+                <button onclick="handleSendMagicLink()" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">发送验证码</button>
+            </div>
+            <div id="auth-step-2" class="hidden text-center">
+                <h4 class="text-lg font-bold text-white mb-2">邮件已发送!</h4>
+                <input id="otp-input" type="text" placeholder="6 位数字验证码" class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 text-center tracking-widest font-mono text-lg focus:border-primary outline-none">
+                <button onclick="handleVerifyOtp()" class="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition">验证登录</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="keyModal" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center backdrop-blur-sm">
         <div class="bg-[#111] border border-border-color p-8 rounded-2xl w-full max-w-lg shadow-2xl relative">
             <button onclick="document.getElementById('keyModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white"><span class="material-symbols-rounded">close</span></button>
             <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
                 <span class="material-symbols-rounded text-primary">vpn_key</span> 配置 API Keys
             </h3>
-            <div class="bg-gray-800/50 rounded-xl p-4 mb-4 border border-gray-700">
-                <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-2">
-                    <span class="material-symbols-rounded text-primary text-sm">help</span> 如何获取免费 API Key?
-                </h4>
-                <ol class="text-[10px] text-gray-400 list-decimal list-inside space-y-1">
-                    <li>访问 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-primary hover:underline font-bold">Google Cloud Console</a> 并登录。</li>
-                    <li>点击左上角 "Select Project" -> "New Project"。</li>
-                    <li>顶部搜 <strong>"YouTube Data API v3"</strong> 并点击 "Enable"。</li>
-                    <li>左侧菜单 "Credentials" -> "Create Credentials" -> <strong>"API Key"</strong>。</li>
-                </ol>
-            </div>
-            <form action="/" method="POST">
-                <label class="block text-xs font-bold text-gray-400 mb-2">粘贴 Keys (系统会自动轮询，一行一个)</label>
-                <textarea name="api_keys_input" rows="5" placeholder="AIzaSy...&#10;AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition font-mono text-xs leading-relaxed">{% if api_keys %}{{ api_keys|join('\n') }}{% endif %}</textarea>
-                <button type="submit" class="w-full bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition shadow-lg shadow-primary/20">保存并使用</button>
+            
+            <form id="api-key-form" action="/" method="POST" onsubmit="handleSaveKeys(event)">
+                <textarea id="api-keys-textarea" name="api_keys_input" rows="5" placeholder="AIzaSy...&#10;AIzaSy..." class="w-full bg-black border border-border-color rounded-xl px-4 py-3 text-white mb-4 focus:border-primary outline-none transition font-mono text-xs">{% if api_keys %}{{ api_keys|join('\n') }}{% endif %}</textarea>
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-primary hover:bg-[#b3e600] text-black font-bold py-3 rounded-xl transition">
+                        保存 <span id="save-hint" class="text-[10px] font-normal opacity-70 ml-1 hidden">(并同步到云端)</span>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
-        function saveHistory(type, id, title, thumb, stats) {
-            // 强制计算北京时间 (UTC+8)
-            // 无论你指纹浏览器设置在纽约还是伦敦，这里都显示北京时间
+        // === 1. 初始化 Supabase (请填入你的 URL 和 KEY) ===
+        // 记得使用你的新 Key
+        const SUPABASE_URL = 'https://jlopvzbxyjpavixrsldh.supabase.co'; 
+        const SUPABASE_KEY = 'sb_publishable_JKNjuMTW2QfJUEarQdQfcg_-I0v3TxN';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentUser = null;
+
+        // === 2. 核心逻辑 ===
+        
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                updateUserUI(true);
+                loadUserKeys(); 
+            } else {
+                updateUserUI(false);
+            }
+        }
+        checkSession();
+
+        function updateUserUI(isLoggedIn) {
+            const userPanel = document.getElementById('user-panel');
+            const loginBtn = document.getElementById('login-btn-sidebar');
+            const userEmail = document.getElementById('user-email');
+            const badge = document.getElementById('history-status-badge');
+            const saveHint = document.getElementById('save-hint');
+
+            if (isLoggedIn) {
+                userPanel.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
+                userEmail.textContent = currentUser.email;
+                if(badge) {
+                    badge.textContent = "云端同步中";
+                    badge.classList.replace('text-gray-500', 'text-green-500');
+                }
+                if(saveHint) saveHint.classList.remove('hidden');
+            } else {
+                userPanel.classList.add('hidden');
+                loginBtn.classList.remove('hidden');
+                if(badge) badge.textContent = "本地模式 (未登录)";
+                if(saveHint) saveHint.classList.add('hidden');
+            }
+        }
+
+        async function loadUserKeys() {
+            if (!currentUser) return;
+            const { data, error } = await supabase
+                .from('user_settings')
+                .select('api_keys')
+                .eq('user_id', currentUser.id)
+                .single();
+            
+            if (data && data.api_keys) {
+                const textarea = document.getElementById('api-keys-textarea');
+                textarea.value = data.api_keys;
+            }
+        }
+
+        async function handleSaveKeys(event) {
+            if (currentUser) {
+                event.preventDefault(); 
+                const keys = document.getElementById('api-keys-textarea').value;
+                const { error } = await supabase
+                    .from('user_settings')
+                    .upsert({ 
+                        user_id: currentUser.id, 
+                        api_keys: keys,
+                        updated_at: new Date()
+                    });
+                if (error) {
+                    alert("云端同步失败，但本地会继续保存: " + error.message);
+                }
+                event.target.submit();
+            }
+        }
+
+        async function handleSendMagicLink() {
+            const email = document.getElementById('email-input').value;
+            if (!email) return alert('请输入邮箱');
+            const { error } = await supabase.auth.signInWithOtp({ email: email });
+            if (error) alert('发送失败: ' + error.message);
+            else {
+                document.getElementById('auth-step-1').classList.add('hidden');
+                document.getElementById('auth-step-2').classList.remove('hidden');
+            }
+        }
+
+        async function handleVerifyOtp() {
+            const email = document.getElementById('email-input').value;
+            const token = document.getElementById('otp-input').value;
+            const { data, error } = await supabase.auth.verifyOtp({ email: email, token: token, type: 'email' });
+            if (error) {
+                alert('验证失败: ' + error.message);
+            } else {
+                document.getElementById('authModal').classList.add('hidden');
+                currentUser = data.user;
+                updateUserUI(true);
+                loadUserKeys();
+                if(!document.getElementById('history-view').classList.contains('hidden')) renderHistoryList();
+            }
+        }
+
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            updateUserUI(false);
+            window.location.reload();
+        }
+
+        async function saveHistory(type, id, title, thumb, stats) {
+            // LocalStorage (总是保存，作为备份)
             const d = new Date();
             const localTime = d.getTime();
-            const localOffset = d.getTimezoneOffset() * 60000; // 本地与UTC的偏差(ms)
-            const utc = localTime + localOffset; // 得到纯净UTC时间
-            const beijing = new Date(utc + (3600000 * 8)); // UTC + 8小时
-
+            const localOffset = d.getTimezoneOffset() * 60000;
+            const utc = localTime + localOffset;
+            const beijing = new Date(utc + (3600000 * 8));
             const y = beijing.getFullYear();
             const m = (beijing.getMonth() + 1).toString().padStart(2, '0');
             const day = beijing.getDate().toString().padStart(2, '0');
             const h = beijing.getHours().toString().padStart(2, '0');
             const min = beijing.getMinutes().toString().padStart(2, '0');
-
             const timeStr = `${y}-${m}-${day} ${h}:${min}`;
             
-            const item = {
-                type: type, // 'video' or 'channel'
-                id: id,
-                title: title,
-                thumb: thumb,
-                stats: stats,
-                time: timeStr,
-                timestamp: d.getTime()
-            };
-
+            const item = { type, id, title, thumb, stats, time: timeStr, timestamp: d.getTime() };
             let history = JSON.parse(localStorage.getItem('viral_history') || '[]');
             history = history.filter(h => h.id !== id);
             history.unshift(item);
-            if (history.length > 100) history.pop(); // 记录最近100条
-
+            if (history.length > 100) history.pop();
             localStorage.setItem('viral_history', JSON.stringify(history));
+            
+            // Supabase
+            if (currentUser) {
+                await supabase.from('history').insert([{ 
+                    user_id: currentUser.id, type, item_id: id, title, thumb, stats 
+                }]);
+            }
         }
-
-        function toggleHistoryView() {
-            const resultsView = document.getElementById('results-view');
-            const historyView = document.getElementById('history-view');
-            const searchForm = document.getElementById('search-form');
-            const historyHeader = document.getElementById('history-header');
-            const clearBtn = document.getElementById('clear-history-btn');
-            const btnHistory = document.getElementById('btn-history');
-
-            resultsView.classList.add('hidden');
-            searchForm.classList.add('hidden');
-            historyView.classList.remove('hidden');
-            historyHeader.classList.remove('hidden');
-            historyHeader.classList.add('flex');
-            clearBtn.classList.remove('hidden');
-
-            // 激活菜单样式
-            btnHistory.classList.add('bg-primary', 'text-black', 'font-bold');
-            btnHistory.classList.remove('text-gray-400');
-
+        
+        async function toggleHistoryView() {
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('search-form').classList.add('hidden');
+            document.getElementById('history-view').classList.remove('hidden');
+            document.getElementById('history-header').classList.remove('hidden');
+            document.getElementById('history-header').classList.add('flex');
             renderHistoryList();
         }
 
-        function renderHistoryList() {
+        async function renderHistoryList() {
             const listEl = document.getElementById('history-list');
             const emptyEl = document.getElementById('history-empty');
-            const history = JSON.parse(localStorage.getItem('viral_history') || '[]');
-
             listEl.innerHTML = '';
-
-            if (history.length === 0) {
-                emptyEl.classList.remove('hidden');
-                return;
-            } else {
+            
+            if (!currentUser) {
+                // 未登录：读本地
+                const history = JSON.parse(localStorage.getItem('viral_history') || '[]');
+                if (history.length === 0) { emptyEl.classList.remove('hidden'); return; }
                 emptyEl.classList.add('hidden');
+                history.forEach(item => {
+                    renderItem(item, listEl);
+                });
+                return;
             }
+
+            // 已登录：读云端
+            const { data: history } = await supabase
+                .from('history')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            
+            if (!history || history.length === 0) { emptyEl.classList.remove('hidden'); return; }
+            emptyEl.classList.add('hidden');
 
             history.forEach(item => {
-                const isVideo = item.type === 'video';
-                const url = isVideo ? `https://www.youtube.com/watch?v=${item.id}` : `https://www.youtube.com/channel/${item.id}`;
-                const icon = isVideo ? 'movie' : 'person';
+                const date = new Date(item.created_at);
+                const beijingTime = new Date(date.getTime() + 8*60*60*1000).toISOString().replace('T', ' ').substring(0, 16);
                 
-                const thumbHtml = item.thumb 
-                    ? `<img src="${item.thumb}" class="w-12 h-12 rounded object-cover border border-border-color">`
-                    : `<div class="w-12 h-12 rounded bg-gray-800 flex items-center justify-center border border-border-color"><span class="material-symbols-rounded text-gray-500">${icon}</span></div>`;
-
-                const html = `
-                    <div class="bg-bg-card border border-border-color rounded-xl p-3 flex items-center gap-4 hover:border-primary/50 transition group">
-                        <div class="text-[10px] text-gray-500 font-mono w-24 shrink-0 text-right">
-                            ${item.time}
-                        </div>
-                        
-                        <a href="${url}" target="_blank" class="shrink-0">
-                            ${thumbHtml}
-                        </a>
-                        
-                        <div class="flex-1 min-w-0">
-                            <a href="${url}" target="_blank" class="block font-bold text-sm text-gray-200 truncate group-hover:text-white">
-                                <span class="text-xs bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded mr-2 border border-border-color uppercase">${item.type}</span>
-                                ${item.title}
-                            </a>
-                            <div class="text-xs text-primary mt-1">
-                                数据快照: ${item.stats}
-                            </div>
-                        </div>
-
-                        <a href="${url}" target="_blank" class="text-gray-600 hover:text-primary p-2">
-                            <span class="material-symbols-rounded">open_in_new</span>
-                        </a>
-                    </div>
-                `;
-                listEl.innerHTML += html;
+                const renderObj = {
+                    time: beijingTime,
+                    type: item.type,
+                    id: item.item_id,
+                    thumb: item.thumb,
+                    title: item.title,
+                    stats: item.stats
+                };
+                renderItem(renderObj, listEl);
             });
         }
+        
+        function renderItem(item, listEl) {
+            const isVideo = item.type === 'video';
+            const url = isVideo ? `https://www.youtube.com/watch?v=${item.id}` : `https://www.youtube.com/channel/${item.id}`;
+            const thumbHtml = item.thumb ? `<img src="${item.thumb}" class="w-12 h-12 rounded object-cover border border-border-color">` : `<div class="w-12 h-12 rounded bg-gray-800 flex items-center justify-center"><span class="material-symbols-rounded text-gray-500">movie</span></div>`;
 
-        function clearHistory() {
-            if(confirm('确定要清空所有浏览记录吗？')) {
-                localStorage.removeItem('viral_history');
-                renderHistoryList();
-            }
+            listEl.innerHTML += `
+                <div class="bg-bg-card border border-border-color rounded-xl p-3 flex items-center gap-4 hover:border-primary/50 transition">
+                    <div class="text-[10px] text-gray-500 font-mono w-24 shrink-0 text-right">${item.time}</div>
+                    <a href="${url}" target="_blank" class="shrink-0">${thumbHtml}</a>
+                    <div class="flex-1 min-w-0">
+                        <a href="${url}" target="_blank" class="block font-bold text-sm text-gray-200 truncate hover:text-white">
+                            <span class="text-xs bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded mr-2 border border-border-color uppercase">${item.type}</span>
+                            ${item.title}
+                        </a>
+                        <div class="text-xs text-primary mt-1">${item.stats}</div>
+                    </div>
+                </div>`;
         }
     </script>
-
 </body>
 </html>
