@@ -6,7 +6,9 @@
     <title>ViralMonkey Pro - 自动托管版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Rounded" rel="stylesheet"/>
-    <script src="https://cdn.bootcdn.net/ajax/libs/supabase.js/2.39.3/supabase.min.js"></script>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -234,18 +236,19 @@
         // === 配置 Supabase ===
         const SUPABASE_URL = 'https://jlopvzbxyjpavixrsldh.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_JKNjuMTW2QfJUEarQdQfcg_-I0v3TxN';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 【修改点 2】使用 sb 作为变量名，避免冲突
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let currentUser = null;
         let saveTimeout = null;
 
-        // === 1. 初始化与自动登录 ===
-        // 监听身份变化 (自动保持登录状态)
-        supabase.auth.onAuthStateChange((event, session) => {
+        // 监听身份变化
+        sb.auth.onAuthStateChange((event, session) => {
             if (session) {
                 currentUser = session.user;
                 updateUserUI(true);
-                loadUserKeys(); // 登录后自动拉取 Key
+                loadUserKeys();
             } else {
                 currentUser = null;
                 updateUserUI(false);
@@ -267,17 +270,14 @@
             }
         }
 
-        // === 2. API Key 自动保存逻辑 (核心) ===
         const keyInput = document.getElementById('api-keys-textarea');
         const statusLabel = document.getElementById('auto-save-status');
 
-        // 监听输入，防抖动保存
         keyInput.addEventListener('input', () => {
             statusLabel.textContent = "输入中...";
             statusLabel.className = "text-yellow-500 font-bold";
-            
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(autoSaveKeys, 1000); // 停止输入1秒后自动保存
+            saveTimeout = setTimeout(autoSaveKeys, 1000);
         });
 
         async function autoSaveKeys() {
@@ -285,17 +285,13 @@
             statusLabel.textContent = "正在同步到云端...";
             statusLabel.className = "text-blue-500 font-bold animate-pulse";
 
-            // 1. 如果已登录，存云端
             if (currentUser) {
-                const { error } = await supabase
+                const { error } = await sb
                     .from('user_settings')
                     .upsert({ user_id: currentUser.id, api_keys: keys, updated_at: new Date() });
-                
                 if (error) console.error("云端保存失败", error);
             }
 
-            // 2. 总是存到 Flask Session (通过后台静默请求)
-            // 我们创建一个隐藏的 form 或者 fetch 请求来更新服务器端的 session
             await fetch('/', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -305,7 +301,6 @@
             statusLabel.textContent = "已自动保存 ✔";
             statusLabel.className = "text-green-500 font-bold";
             
-            // 更新UI上的点
             const dot = document.getElementById('key-status-dot');
             const txt = document.getElementById('key-count-text');
             const count = keys.trim().split(/[\n,]+/).filter(k => k.trim()).length;
@@ -321,52 +316,64 @@
 
         async function loadUserKeys() {
             if (!currentUser) return;
-            const { data } = await supabase.from('user_settings').select('api_keys').eq('user_id', currentUser.id).single();
+            const { data } = await sb.from('user_settings').select('api_keys').eq('user_id', currentUser.id).single();
             if (data && data.api_keys) {
                 keyInput.value = data.api_keys;
-                // 触发一次自动保存以同步到 Flask Session
                 autoSaveKeys();
             }
         }
 
-        // === 3. 历史记录自动保存 ===
         async function saveHistory(type, id, title, thumb, stats) {
-            // 存云端 (登录后)
             if (currentUser) {
-                await supabase.from('history').insert([{ 
+                await sb.from('history').insert([{ 
                     user_id: currentUser.id, type, item_id: id, title, thumb, stats 
                 }]);
             }
-            // 存本地 (总是)
-            // ... (本地存储逻辑同前) ...
         }
 
-        // === 4. 登录逻辑 ===
         async function handleSendMagicLink() {
             const email = document.getElementById('email-input').value;
             if (!email) return alert('请输入邮箱');
-            const { error } = await supabase.auth.signInWithOtp({ email });
-            if (error) alert(error.message);
-            else {
-                document.getElementById('auth-step-1').classList.add('hidden');
-                document.getElementById('auth-step-2').classList.remove('hidden');
+            
+            const btn = document.querySelector('#auth-step-1 button');
+            const originalText = btn.innerText;
+            btn.innerText = "发送中...";
+            btn.disabled = true;
+
+            try {
+                // 检查 sb 是否初始化成功
+                if (!sb || !sb.auth) {
+                    alert("Supabase 客户端未初始化，请检查网络。");
+                    return;
+                }
+                const { error } = await sb.auth.signInWithOtp({ email });
+                if (error) {
+                    alert(error.message);
+                } else {
+                    document.getElementById('auth-step-1').classList.add('hidden');
+                    document.getElementById('auth-step-2').classList.remove('hidden');
+                }
+            } catch (e) {
+                alert("发送错误: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
 
         async function handleVerifyOtp() {
             const email = document.getElementById('email-input').value;
             const token = document.getElementById('otp-input').value;
-            const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+            const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
             if (error) alert(error.message);
             else document.getElementById('authModal').classList.add('hidden');
         }
 
         async function handleLogout() {
-            await supabase.auth.signOut();
+            await sb.auth.signOut();
             window.location.reload();
         }
 
-        // === 视图切换 ===
         async function toggleHistoryView() {
             document.getElementById('results-view').classList.add('hidden');
             document.getElementById('search-form').classList.add('hidden');
@@ -384,10 +391,9 @@
             let historyData = [];
 
             if (currentUser) {
-                const { data } = await supabase.from('history').select('*').order('created_at', { ascending: false }).limit(50);
+                const { data } = await sb.from('history').select('*').order('created_at', { ascending: false }).limit(50);
                 historyData = data || [];
             } else {
-                // 未登录读取本地... (此处省略，代码同之前，为了简洁)
                 emptyEl.innerHTML = '<div class="text-center py-10">请登录以查看云端历史</div>';
                 emptyEl.classList.remove('hidden');
                 return;
